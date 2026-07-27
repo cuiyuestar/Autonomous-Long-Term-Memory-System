@@ -1,0 +1,159 @@
+# ALTM (Autonomous Long-Term Memory) example configuration.
+# Phase 1 only documents shape; runtime parsing is intentionally deferred.
+
+runtime:
+  control_plane: python
+  python_target: ">=3.11"
+  typescript_adapter_node: ">=22"
+  model_contracts: pydantic
+
+storage:
+  default_backend: sqlite
+  sqlite:
+    path: ./data/altm.sqlite3
+    schema: ./schemas/sqlite/001_initial.sql
+    fts_enabled: true
+    vector_enabled: true
+
+embedding:
+  provider: openai_compatible
+  model: text-embedding-v4
+  cache_table: memory_embeddings
+  failure_strategy: lexical_fallback
+  env:
+    base_url: ALTM_EMBEDDING_BASE_URL
+    api_key: ALTM_EMBEDDING_API_KEY
+    model: ALTM_EMBEDDING_MODEL
+    timeout_seconds: ALTM_EMBEDDING_TIMEOUT_SECONDS
+
+folding:
+  l1_summarizer:
+    mode: rule_based_mock
+    human_review_required: false
+  l2_extractor:
+    mode: openai_compatible
+    human_review_required: true
+    review_status_default: pending
+    failure_strategy: no_write
+    env:
+      base_url: ALTM_LLM_BASE_URL
+      api_key: ALTM_LLM_API_KEY
+      model: ALTM_LLM_MODEL
+  l3_scene_builder:
+    mode: rule_based_grouping
+    grouping:
+      - session_id
+      - atom_type
+    min_group_size: 2
+    status_default: observing
+  l4_persona_distiller:
+    mode: disabled
+    human_review_required: true
+
+retrieval:
+  channels:
+    bm25: true
+    remote_vector: true
+    local_vector: true
+    trigram_fts: true
+    jieba_tokens: true
+    vector: true
+    graph: false
+    temporal: planned
+  filters:
+    layer: true
+    session_id: true
+    status: true
+  fusion:
+    strategy: planned_rrf
+
+lifecycle:
+  hard_delete_enabled: false
+  tombstone_first: true
+  scoring:
+    mode: explicit_governance_cycle
+    resident_score:
+      structural_weight: 0.30
+      access_weight: 0.30
+      recency_weight: 0.25
+      evidence_quality_weight: 0.15
+    review_multiplier:
+      pending: 0.75
+      rejected: 0.15
+    candidate_thresholds:
+      promotion: 0.70
+      demotion: 0.22
+  feedback_signals:
+    enabled: true
+    useful_signals:
+      - cited_by_agent
+      - user_confirmed
+  promotion:
+    dynamic_threshold: mvp_candidate_marker
+  demotion:
+    enabled: mvp_candidate_marker
+  semantic_dedup:
+    enabled: true
+    mode: cached_embedding_candidate_marker
+    threshold: 0.92
+    edge_type: semantic_duplicate_candidate
+    auto_merge: false
+    auto_tombstone: false
+
+human_in_loop:
+  mode: balanced
+  confirmation_required_for:
+    - architecture
+    - public_api
+    - data_model
+    - dependency
+    - deletion_policy
+    - persona_auto_write
+    - adapter_priority
+  review_queue:
+    enabled: true
+    storage: memory_metadata_and_graph_edge_metadata
+    auto_apply_destructive_actions: false
+    action_planning:
+      enabled: true
+      mode: dry_run_only
+      second_confirmation_required_for:
+        - promote_to_long
+        - mark_observing
+        - prepare_duplicate_resolution
+        - activate_l3_scene
+    action_apply:
+      enabled: true
+      requires_confirm_flag: true
+      destructive_actions_enabled: false
+      duplicate_resolution_mode: pending_canonical_selection
+    audit_events:
+      enabled: true
+      storage: review_events
+      append_only: true
+      summary:
+        enabled: true
+        mode: read_only
+
+adapters:
+  mcp:
+    enabled: true
+    dependency: "mcp>=1.0"
+    transports:
+      - stdio
+      - sse
+    tools:
+      - memory_remember
+      - memory_fold_l1
+      - memory_extract_l2
+      - memory_cluster_l3
+      - memory_recall
+      - memory_drilldown
+      - memory_build_context
+      - memory_review_queue
+      - memory_review_mark
+      - memory_review_plan
+      - memory_review_apply
+      - memory_review_events
+      - memory_review_audit
+      - memory_feedback
