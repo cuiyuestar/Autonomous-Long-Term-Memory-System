@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import Any, cast
 
 from altm.contracts import (
     EvidenceRef,
@@ -12,6 +13,7 @@ from altm.contracts import (
     L2AtomType,
     LifecycleState,
     MemoryLayer,
+    MemoryScope,
     MemoryStatus,
     MemoryUnit,
     ReviewStatus,
@@ -19,7 +21,6 @@ from altm.contracts import (
 from altm.llm import OpenAICompatibleClient
 from altm.storage import SQLiteMemoryStore
 from altm.utils import sha256_text, stable_id, utc_now_iso
-
 
 SYSTEM_PROMPT = """You extract L2 atomic memories from an L1 context capsule.
 
@@ -54,14 +55,33 @@ class L2Extractor:
         self.llm_client = llm_client
 
     def extract_from_session(self, session_id: str) -> Sequence[MemoryUnit]:
-        l1_units = [
-            unit
-            for unit in self.store.list_memory_units(layer=MemoryLayer.L1)
-            if unit.metadata.get("session_id") == session_id
-        ]
-        created: List[MemoryUnit] = []
+        scope = self.store.scope or MemoryScope()
+        checkpoint_scope = stable_id(
+            "checkpoint",
+            "l2",
+            *scope.key_parts(),
+            session_id,
+        )
+        l1_units, next_cursor = self.store.list_unprocessed_session_memories(
+            layer=MemoryLayer.L1,
+            session_id=session_id,
+            checkpoint_scope=checkpoint_scope,
+            limit=100,
+        )
+        created: list[MemoryUnit] = []
         for l1_unit in l1_units:
             created.extend(self.extract_from_l1(l1_unit))
+        if l1_units:
+            self.store.put_checkpoint(
+                checkpoint_scope,
+                str(next_cursor),
+                metadata={
+                    "stage": "l2",
+                    "session_id": session_id,
+                    "source_count": len(l1_units),
+                    "created_count": len(created),
+                },
+            )
         return created
 
     def extract_from_l1(self, l1_unit: MemoryUnit) -> Sequence[MemoryUnit]:
@@ -75,7 +95,7 @@ class L2Extractor:
             ]
         )
         atoms = self._parse_atoms(response, l1_unit)
-        created: List[MemoryUnit] = []
+        created: list[MemoryUnit] = []
         for atom in atoms:
             if self.store.find_l2_duplicate(atom) is not None:
                 continue
@@ -84,16 +104,24 @@ class L2Extractor:
             created.append(memory)
         return created
 
-    def _parse_atoms(self, response: Dict[str, Any], l1_unit: MemoryUnit) -> Sequence[L2Atom]:
-        raw_atoms = response.get("atoms", [])
-        if not isinstance(raw_atoms, list):
+    def _parse_atoms(self, response: dict[str, Any], l1_unit: MemoryUnit) -> Sequence[L2Atom]:
+        raw_atoms_value: object = response.get("atoms", [])
+        if not isinstance(raw_atoms_value, list):
             raise ValueError("LLM response field `atoms` must be a list")
+        raw_atoms = cast(list[object], raw_atoms_value)
 
-        parsed: List[L2Atom] = []
-        for raw_atom in raw_atoms:
-            if not isinstance(raw_atom, dict):
+        parsed: list[L2Atom] = []
+        for raw_atom_value in raw_atoms:
+            if not isinstance(raw_atom_value, dict):
                 raise ValueError("Each L2 atom must be an object")
-            atom_type = L2AtomType(raw_atom["atom_type"])
+            raw_atom = {
+                str(key): value
+                for key, value in cast(
+                    dict[object, object],
+                    raw_atom_value,
+                ).items()
+            }
+            atom_type = L2AtomType(str(raw_atom["atom_type"]))
             text = str(raw_atom["text"]).strip()
             atom_id = stable_id("l2", l1_unit.id, atom_type.value, text)
             parsed.append(
@@ -101,11 +129,11 @@ class L2Extractor:
                     id=atom_id,
                     atom_type=atom_type,
                     text=text,
-                    subject=raw_atom.get("subject"),
-                    predicate=raw_atom.get("predicate"),
-                    object=raw_atom.get("object"),
-                    scope=raw_atom.get("scope"),
-                    confidence=float(raw_atom.get("confidence", 0.5)),
+                    subject=_optional_text(raw_atom.get("subject")),
+                    predicate=_optional_text(raw_atom.get("predicate")),
+                    object=_optional_text(raw_atom.get("object")),
+                    scope=_optional_text(raw_atom.get("scope")),
+                    confidence=_confidence(raw_atom.get("confidence")),
                     extraction_reason=str(raw_atom["extraction_reason"]),
                     source_memory_id=l1_unit.id,
                     review_status=ReviewStatus.PENDING,
@@ -122,6 +150,7 @@ class L2Extractor:
         content = json.dumps(atom.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
         return MemoryUnit(
             id=atom.id,
+            scope=l1_unit.scope,
             layer=MemoryLayer.L2,
             lifecycle_state=LifecycleState.SHORT,
             status=MemoryStatus.ACTIVE,
@@ -150,3 +179,11 @@ class L2Extractor:
                 "session_id": l1_unit.metadata.get("session_id"),
             },
         )
+
+
+def _optional_text(value: object) -> str | None:
+    return str(value) if value is not None else None
+
+
+def _confidence(value: object) -> float:
+    return float(value) if isinstance(value, (int, float)) else 0.5

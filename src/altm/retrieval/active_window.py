@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from altm.contracts import (
     ActiveWindowDecision,
@@ -236,12 +236,6 @@ def _exclusion_reason(
         return "review_rejected"
     if _review_state(memory, "governance_review_status") == "rejected":
         return "governance_rejected"
-    if memory.layer == MemoryLayer.L2:
-        review_status = _review_state(memory, "review_status")
-        if review_status == "pending":
-            return "l2_pending_review"
-        if memory.metadata.get("atom_type") is not None and review_status != "approved":
-            return "l2_not_approved"
     if session_id is not None:
         memory_session = memory.metadata.get("session_id")
         if strict_session:

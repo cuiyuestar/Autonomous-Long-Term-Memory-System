@@ -1,15 +1,20 @@
 import asyncio
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from altm.adapters.mcp.server import create_mcp_server  # noqa: E402
-from altm.contracts import LifecycleState, MemoryLayer, MemoryStatus, MemoryUnit, RecallQuery  # noqa: E402
+from altm.contracts import (  # noqa: E402
+    LifecycleState,
+    MemoryLayer,
+    MemoryStatus,
+    MemoryUnit,
+    RecallQuery,
+)
 from altm.retrieval import FTSRetrievalEngine, QueryEmergenceEngine  # noqa: E402
 from altm.storage import SQLiteMemoryStore  # noqa: E402
 from altm.utils import sha256_text, utc_now_iso  # noqa: E402
@@ -88,7 +93,7 @@ class QueryEmergenceTest(unittest.TestCase):
                 confidence=0.9,
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,

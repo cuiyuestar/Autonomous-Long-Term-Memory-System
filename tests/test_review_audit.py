@@ -1,9 +1,8 @@
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -17,7 +16,12 @@ from altm.contracts import (  # noqa: E402
     ReviewItemKind,
     ReviewStatus,
 )
-from altm.review import ReviewActionExecutor, ReviewActionPlanner, ReviewAuditReporter, ReviewQueue  # noqa: E402
+from altm.review import (  # noqa: E402
+    ReviewActionExecutor,
+    ReviewActionPlanner,
+    ReviewAuditReporter,
+    ReviewQueue,
+)
 from altm.storage import SQLiteMemoryStore  # noqa: E402
 from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 

@@ -1,11 +1,11 @@
-from contextlib import redirect_stdout
-from io import StringIO
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -32,10 +32,14 @@ class AutonomousGovernanceTest(unittest.TestCase):
             store.put_memory_unit(_l2("pref-a", "用户偏好中文技术深度解释。", "preference"))
             store.put_memory_unit(_l2("pref-b", "用户偏好直接推进开发。", "preference"))
 
-            result = AltmApplication(db_path).autonomous_governance_cycle(
-                model_mode="auto",
-                rule_fallback=True,
-            )
+            with patch(
+                "altm.governance.autonomous._evaluate_action",
+                return_value=_execute_evaluation(),
+            ):
+                result = AltmApplication(db_path).autonomous_governance_cycle(
+                    model_mode="auto",
+                    rule_fallback=False,
+                )
             l4_units = SQLiteMemoryStore(db_path).list_memory_units(layer=MemoryLayer.L4)
             events = SQLiteMemoryStore(db_path).list_review_events(
                 event_type=AUTONOMOUS_EVENT_APPLIED,
@@ -48,8 +52,8 @@ class AutonomousGovernanceTest(unittest.TestCase):
             self.assertEqual(l4_units[0].lifecycle_state, LifecycleState.PERMANENT)
             self.assertEqual(l4_units[0].metadata["autonomous_decision"], "execute")
             self.assertEqual(events[0].event_type, AUTONOMOUS_EVENT_APPLIED)
-            self.assertEqual(events[0].metadata["fallback_mode"], "small_model_only")
-            self.assertTrue(events[0].metadata["model_chain"]["small_model"]["available"])
+            self.assertEqual(events[0].metadata["fallback_mode"], "none")
+            self.assertFalse(events[0].metadata["model_chain"]["small_model"]["available"])
 
     def test_autonomous_governance_materializes_cross_session_l3_without_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -62,10 +66,14 @@ class AutonomousGovernanceTest(unittest.TestCase):
                 store.put_memory_unit(memory)
                 store.put_memory_embedding(memory.id, "test-embedding", memory.content_hash, vector)
 
-            result = AltmApplication(db_path).autonomous_governance_cycle(
-                model="test-embedding",
-                l3_threshold=0.95,
-            )
+            with patch(
+                "altm.governance.autonomous._evaluate_action",
+                return_value=_execute_evaluation(),
+            ):
+                result = AltmApplication(db_path).autonomous_governance_cycle(
+                    model="test-embedding",
+                    l3_threshold=0.95,
+                )
             l3_units = SQLiteMemoryStore(db_path).list_memory_units(layer=MemoryLayer.L3)
             edges = SQLiteMemoryStore(db_path).list_graph_edges("cross_session_l3_candidate")
 
@@ -75,7 +83,7 @@ class AutonomousGovernanceTest(unittest.TestCase):
             self.assertEqual(l3_units[0].metadata["builder"], "autonomous_governance_engine")
             self.assertEqual(edges[0]["metadata"]["candidate_status"], "autonomous_materialized")
 
-    def test_autonomous_governance_semantic_dedup_uses_rule_fallback(self) -> None:
+    def test_autonomous_governance_semantic_dedup_defers_without_model(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "memory.sqlite3"
             store = SQLiteMemoryStore(db_path)
@@ -102,13 +110,14 @@ class AutonomousGovernanceTest(unittest.TestCase):
                 limit=20,
             )
 
-            self.assertEqual(result["summary"]["semantic_applied_count"], 1)
+            self.assertEqual(result["summary"]["semantic_applied_count"], 0)
             self.assertIsNotNone(canonical)
             self.assertIsNotNone(duplicate)
-            self.assertEqual(duplicate.status, MemoryStatus.TOMBSTONED)
-            self.assertIn(second.id, canonical.metadata["merged_duplicate_ids"])
+            self.assertEqual(duplicate.status, MemoryStatus.ACTIVE)
+            self.assertNotIn("merged_duplicate_ids", canonical.metadata)
             self.assertTrue(any(event.metadata["action_type"] == "merge_duplicate" for event in decisions))
             self.assertTrue(any(event.metadata["action_type"] == "merge_duplicate" for event in evaluations))
+            self.assertTrue(all(event.status == "defer" for event in decisions))
 
     def test_autonomous_governance_rollback_tombstones_created_l4(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -118,7 +127,11 @@ class AutonomousGovernanceTest(unittest.TestCase):
             store.put_memory_unit(_l2("pref-a", "用户偏好中文技术深度解释。", "preference"))
             store.put_memory_unit(_l2("pref-b", "用户偏好直接推进开发。", "preference"))
 
-            result = AltmApplication(db_path).autonomous_governance_cycle()
+            with patch(
+                "altm.governance.autonomous._evaluate_action",
+                return_value=_execute_evaluation(),
+            ):
+                result = AltmApplication(db_path).autonomous_governance_cycle()
             memory_id = result["steps"]["l4_persona"]["memory_ids"][0]
             rollback = AltmApplication(db_path).autonomous_governance_rollback(
                 target_type="memory_unit",
@@ -157,7 +170,7 @@ class AutonomousGovernanceTest(unittest.TestCase):
             payload = json.loads(stdout.getvalue())
             self.assertEqual(exit_code, 0)
             self.assertEqual(payload["status"], "complete")
-            self.assertEqual(payload["summary"]["l4_persona_applied_count"], 1)
+            self.assertEqual(payload["summary"]["l4_persona_applied_count"], 0)
 
     def test_cli_autonomous_governance_rollback_outputs_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -166,7 +179,11 @@ class AutonomousGovernanceTest(unittest.TestCase):
             store.initialize()
             store.put_memory_unit(_l2("pref-a", "用户偏好中文技术深度解释。", "preference"))
             store.put_memory_unit(_l2("pref-b", "用户偏好直接推进开发。", "preference"))
-            result = AltmApplication(db_path).autonomous_governance_cycle()
+            with patch(
+                "altm.governance.autonomous._evaluate_action",
+                return_value=_execute_evaluation(),
+            ):
+                result = AltmApplication(db_path).autonomous_governance_cycle()
             memory_id = result["steps"]["l4_persona"]["memory_ids"][0]
 
             stdout = StringIO()
@@ -214,6 +231,28 @@ def _l2(
         updated_at=now,
         metadata=metadata,
     )
+
+
+def _execute_evaluation() -> dict[str, object]:
+    return {
+        "decision": "execute",
+        "fallback_mode": "none",
+        "small_model_score": None,
+        "llm_judge_score": 0.99,
+        "model_outputs": {
+            "rule_gate": {"available": True, "score": 0.99},
+            "small_model": {
+                "available": False,
+                "reason": "real_small_model_not_configured",
+            },
+            "llm_judge": {
+                "available": True,
+                "score": 0.99,
+                "decision": "execute",
+            },
+            "model_mode": "llm",
+        },
+    }
 
 
 if __name__ == "__main__":

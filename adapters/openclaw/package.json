@@ -1,0 +1,43 @@
+{
+  "name": "@altm/openclaw",
+  "version": "1.0.0",
+  "description": "OpenClaw prepare/commit adapter for ALTM",
+  "type": "module",
+  "license": "Apache-2.0",
+  "files": [
+    "index.ts",
+    "openclaw.plugin.json",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@altm/sdk": "^1.0.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.31"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "install": {
+      "npmSpec": "@altm/openclaw",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.5.31"
+    },
+    "release": {
+      "bundleRuntimeDependencies": false,
+      "publishToNpm": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System.git",
+    "directory": "adapters/openclaw"
+  }
+}

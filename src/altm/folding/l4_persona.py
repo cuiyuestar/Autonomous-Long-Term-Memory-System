@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Sequence
+from collections.abc import Sequence
 
 from altm.contracts import (
     EvidenceRef,
@@ -16,7 +16,6 @@ from altm.contracts import (
 )
 from altm.storage import SQLiteMemoryStore
 from altm.utils import sha256_text, stable_id, utc_now_iso
-
 
 PERSONA_ATOM_TYPES = {"preference", "constraint", "lesson"}
 
@@ -72,6 +71,7 @@ class L4PersonaCandidateBuilder:
         confidence = min(0.95, 0.60 + 0.08 * support_count)
         return MemoryUnit(
             id=persona_id,
+            scope=sorted_memories[0].scope,
             layer=MemoryLayer.L4,
             lifecycle_state=LifecycleState.LONG,
             status=MemoryStatus.OBSERVING,

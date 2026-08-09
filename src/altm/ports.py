@@ -6,7 +6,8 @@ retrieval, lifecycle, or adapter details.
 
 from __future__ import annotations
 
-from typing import Iterable, Optional, Protocol, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Protocol
 
 from altm.contracts import (
     AccessSignal,
@@ -31,7 +32,7 @@ class MemoryStore(Protocol):
         """Persist a memory unit and its indexed representation."""
         ...
 
-    def get_memory_unit(self, memory_id: str) -> Optional[MemoryUnit]:
+    def get_memory_unit(self, memory_id: str) -> MemoryUnit | None:
         """Load a memory unit by id."""
         ...
 
@@ -39,9 +40,9 @@ class MemoryStore(Protocol):
         self,
         query: str,
         limit: int = 10,
-        layers: Optional[Sequence[MemoryLayer]] = None,
-        session_id: Optional[str] = None,
-        statuses: Optional[Sequence[MemoryStatus]] = None,
+        layers: Sequence[MemoryLayer] | None = None,
+        session_id: str | None = None,
+        statuses: Sequence[MemoryStatus] | None = None,
     ) -> Sequence[MemoryUnit]:
         """Run keyword/FTS retrieval against locally indexed memory."""
         ...
@@ -87,7 +88,7 @@ class LifecycleManager(Protocol):
     def run_cycle(
         self,
         limit: int = 1000,
-        layer: Optional[MemoryLayer] = None,
+        layer: MemoryLayer | None = None,
     ) -> Sequence[MemoryUnit]:
         """Run one governance cycle for promotion, demotion, and compression."""
         ...

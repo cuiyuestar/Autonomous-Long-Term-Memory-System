@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Optional, Sequence
+import time
+import uuid
+from collections.abc import Sequence
 
 from pydantic import BaseModel
 
@@ -13,12 +15,34 @@ from altm.application import AltmApplication
 from altm.contracts import (
     AccessSignal,
     MemoryLayer,
+    MemoryScope,
     MemoryStatus,
     MessageRole,
     ReviewItemKind,
     ReviewStatus,
 )
 from altm.governance import SEMANTIC_DEDUP_MODES
+
+
+def _add_scope_arguments(
+    parser: argparse.ArgumentParser,
+    include_db: bool = True,
+) -> None:
+    if include_db:
+        parser.add_argument("--db", required=True, help="Path to the SQLite database")
+    parser.add_argument("--tenant-id", required=True)
+    parser.add_argument("--workspace-id", required=True)
+    parser.add_argument("--user-id", required=True)
+    parser.add_argument("--agent-id", required=True)
+
+
+def _scope_from_args(args: argparse.Namespace) -> MemoryScope:
+    return MemoryScope(
+        tenant_id=args.tenant_id,
+        workspace_id=args.workspace_id,
+        user_id=args.user_id,
+        agent_id=args.agent_id,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +59,141 @@ def build_parser() -> argparse.ArgumentParser:
     capture.add_argument("--content", required=True, help="Raw message content")
     capture.add_argument("--role", choices=[role.value for role in MessageRole], default="user")
     capture.add_argument("--message-id", help="Optional source message id")
+
+    prepare_turn = subparsers.add_parser(
+        "prepare-turn",
+        help="Persist a user turn and return scoped context for a Host Agent",
+    )
+    _add_scope_arguments(prepare_turn)
+    prepare_turn.add_argument("--session-id", required=True)
+    prepare_turn.add_argument("--turn-id", required=True)
+    prepare_turn.add_argument("--content", required=True)
+    prepare_turn.add_argument("--message-id")
+    prepare_turn.add_argument("--query")
+    prepare_turn.add_argument("--token-budget", type=int, default=1200)
+    prepare_turn.add_argument("--recall-limit", type=int, default=10)
+    prepare_turn.add_argument("--active-window-mode", choices=["off", "limited", "full"])
+    prepare_turn.add_argument("--active-limit", type=int, default=5)
+    prepare_turn.add_argument("--strict-session", action="store_true")
+
+    commit_turn = subparsers.add_parser(
+        "commit-turn",
+        help="Persist a real Host Agent response and its verified memory citations",
+    )
+    _add_scope_arguments(commit_turn)
+    commit_turn.add_argument("--cycle-id", required=True)
+    commit_turn.add_argument("--assistant-content", required=True)
+    commit_turn.add_argument("--assistant-message-id")
+    commit_turn.add_argument("--cited-memory-id", action="append")
+
+    pin_memory = subparsers.add_parser(
+        "pin-memory",
+        help="Pin or unpin a scoped memory as an explicit user signal",
+    )
+    _add_scope_arguments(pin_memory)
+    pin_memory.add_argument("--memory-id", required=True)
+    pin_memory.add_argument("--unpin", action="store_true")
+
+    delete_memory = subparsers.add_parser(
+        "delete-memory",
+        help="Apply an audited tombstone or explicit physical deletion",
+    )
+    _add_scope_arguments(delete_memory)
+    delete_memory.add_argument("--memory-id", required=True)
+    delete_memory.add_argument("--reason", required=True)
+    delete_memory.add_argument("--physical", action="store_true")
+
+    worker = subparsers.add_parser(
+        "worker",
+        help="Process persistent ALTM background jobs with SQLite leases",
+    )
+    worker.add_argument("--db", required=True)
+    worker.add_argument("--worker-id", default="worker-%s" % uuid.uuid4().hex)
+    worker.add_argument("--lease-seconds", type=int, default=120)
+    worker.add_argument("--max-jobs", type=int, default=0, help="0 means run continuously")
+    worker.add_argument("--poll-seconds", type=float, default=1.0)
+
+    runtime_cycle = subparsers.add_parser(
+        "runtime-cycle",
+        help="Run the MVP memory loop: capture, fold, optional L2 extraction, maintenance, and context",
+    )
+    runtime_cycle.add_argument("--db", required=True, help="Path to the SQLite database")
+    runtime_cycle.add_argument("--session-id", required=True, help="Session identifier")
+    runtime_cycle.add_argument("--content", required=True, help="Incoming message content")
+    runtime_cycle.add_argument("--role", choices=[role.value for role in MessageRole], default="user")
+    runtime_cycle.add_argument("--message-id", help="Optional source message id")
+    runtime_cycle.add_argument("--query", help="Optional context query; defaults to content")
+    runtime_cycle.add_argument("--token-budget", type=int, default=1200)
+    runtime_cycle.add_argument("--recall-limit", type=int, default=10)
+    runtime_cycle.add_argument("--active-window-mode", choices=["off", "limited", "full"])
+    runtime_cycle.add_argument("--active-limit", type=int, default=5)
+    runtime_cycle.add_argument("--strict-session", action="store_true")
+    runtime_cycle.add_argument("--skip-fold-l1", action="store_true")
+    runtime_cycle.add_argument("--skip-extract-l2", action="store_true")
+    runtime_cycle.add_argument("--skip-maintenance", action="store_true")
+    runtime_cycle.add_argument("--maintenance-model", help="Embedding model for maintenance; defaults to env")
+    runtime_cycle.add_argument("--index-embeddings", action="store_true")
+    runtime_cycle.add_argument("--embedding-limit", type=int, default=100)
+
+    runtime_session = subparsers.add_parser(
+        "runtime-session-cycle",
+        help="Run the MVP memory loop for a full session transcript",
+    )
+    runtime_session.add_argument("--db", required=True, help="Path to the SQLite database")
+    runtime_session.add_argument("--session-id", required=True, help="Session identifier")
+    runtime_session.add_argument(
+        "--message",
+        action="append",
+        required=True,
+        help="Message as 'role:content' or raw user content; can be repeated",
+    )
+    runtime_session.add_argument("--query", help="Optional context query; defaults to last message")
+    runtime_session.add_argument("--token-budget", type=int, default=1200)
+    runtime_session.add_argument("--recall-limit", type=int, default=10)
+    runtime_session.add_argument("--active-window-mode", choices=["off", "limited", "full"])
+    runtime_session.add_argument("--active-limit", type=int, default=5)
+    runtime_session.add_argument("--strict-session", action="store_true")
+    runtime_session.add_argument("--skip-fold-l1", action="store_true")
+    runtime_session.add_argument("--skip-extract-l2", action="store_true")
+    runtime_session.add_argument("--skip-maintenance", action="store_true")
+    runtime_session.add_argument("--maintenance-model", help="Embedding model for maintenance; defaults to env")
+    runtime_session.add_argument("--index-embeddings", action="store_true")
+    runtime_session.add_argument("--embedding-limit", type=int, default=100)
+
+    mvp_chat = subparsers.add_parser(
+        "mvp-chat",
+        help="Run one interactive MVP chat turn with memory writeback and feedback",
+    )
+    mvp_chat.add_argument("--db", required=True, help="Path to the SQLite database")
+    _add_scope_arguments(mvp_chat, include_db=False)
+    mvp_chat.add_argument("--session-id", required=True, help="Session identifier")
+    mvp_chat.add_argument(
+        "--content",
+        required=True,
+        help="Incoming user message content",
+    )
+    mvp_chat.add_argument("--role", choices=[role.value for role in MessageRole], default="user")
+    mvp_chat.add_argument("--message-id", help="Optional source user message id")
+    mvp_chat.add_argument(
+        "--assistant-content",
+        required=True,
+        help="Real response generated by the Host Agent",
+    )
+    mvp_chat.add_argument("--assistant-message-id", help="Optional assistant message id")
+    mvp_chat.add_argument("--cited-memory-id", action="append")
+    mvp_chat.add_argument("--turn-id")
+    mvp_chat.add_argument("--query", help="Optional context query; defaults to content")
+    mvp_chat.add_argument("--token-budget", type=int, default=1200)
+    mvp_chat.add_argument("--recall-limit", type=int, default=10)
+    mvp_chat.add_argument("--active-window-mode", choices=["off", "limited", "full"])
+    mvp_chat.add_argument("--active-limit", type=int, default=5)
+    mvp_chat.add_argument("--strict-session", action="store_true")
+    mvp_chat.add_argument("--skip-fold-l1", action="store_true")
+    mvp_chat.add_argument("--skip-extract-l2", action="store_true")
+    mvp_chat.add_argument("--skip-maintenance", action="store_true")
+    mvp_chat.add_argument("--maintenance-model", help="Embedding model for maintenance; defaults to env")
+    mvp_chat.add_argument("--index-embeddings", action="store_true")
+    mvp_chat.add_argument("--embedding-limit", type=int, default=100)
 
     fold_l1 = subparsers.add_parser("fold-l1", help="Generate a rule-based L1 capsule")
     fold_l1.add_argument("--db", required=True, help="Path to the SQLite database")
@@ -273,14 +432,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     maintenance_cycle.add_argument(
         "--autonomous-model-mode",
-        choices=["auto", "rules", "llm", "off"],
+        choices=["auto", "llm", "off"],
         default="auto",
-        help="Model mode for autonomous governance; auto falls back to rules when models are absent",
-    )
-    maintenance_cycle.add_argument(
-        "--disable-autonomous-rule-fallback",
-        action="store_true",
-        help="Disable rule fallback for autonomous governance",
+        help="Model mode; missing or low-confidence semantic models defer high-risk actions",
     )
     maintenance_cycle.add_argument(
         "--apply-review-actions-compat",
@@ -328,14 +482,9 @@ def build_parser() -> argparse.ArgumentParser:
     autonomous_governance.add_argument("--limit", type=int, default=1000)
     autonomous_governance.add_argument(
         "--model-mode",
-        choices=["auto", "rules", "llm", "off"],
+        choices=["auto", "llm", "off"],
         default="auto",
-        help="Model mode; auto currently falls back to rule-only evaluators",
-    )
-    autonomous_governance.add_argument(
-        "--disable-rule-fallback",
-        action="store_true",
-        help="Disable rule fallback",
+        help="Model mode; missing or low-confidence semantic models defer high-risk actions",
     )
     autonomous_governance.add_argument(
         "--dry-run",
@@ -443,7 +592,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     review_queue = subparsers.add_parser(
         "review-queue",
-        help="List human-reviewable memory governance candidates",
+        help="Legacy/debug: list compatibility review candidates outside the autonomous runtime path",
     )
     review_queue.add_argument("--db", required=True, help="Path to the SQLite database")
     review_queue.add_argument("--kind", choices=[kind.value for kind in ReviewItemKind])
@@ -456,7 +605,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     review_mark = subparsers.add_parser(
         "review-mark",
-        help="Mark a review queue target as pending, approved, or rejected",
+        help="Legacy/debug: mark a compatibility review target outside the autonomous runtime path",
     )
     review_mark.add_argument("--db", required=True, help="Path to the SQLite database")
     review_mark.add_argument(
@@ -476,7 +625,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     review_plan = subparsers.add_parser(
         "review-plan",
-        help="Preview proposed actions for reviewed governance candidates",
+        help="Legacy/debug: preview compatibility action plans outside the autonomous runtime path",
     )
     review_plan.add_argument("--db", required=True, help="Path to the SQLite database")
     review_plan.add_argument("--limit", type=int, default=100, help="Maximum planned actions")
@@ -488,7 +637,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     review_apply = subparsers.add_parser(
         "review-apply",
-        help="Apply a reviewed action plan with explicit confirmation gates",
+        help="Legacy/debug: apply a compatibility action plan outside the autonomous runtime path",
     )
     review_apply.add_argument("--db", required=True, help="Path to the SQLite database")
     review_apply.add_argument("--plan-id", required=True, help="Review action plan id")
@@ -525,10 +674,18 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_server.add_argument("--db", required=True, help="Path to the SQLite database")
     mcp_server.add_argument(
         "--transport",
-        choices=["stdio", "sse"],
+        choices=["stdio", "sse", "streamable-http"],
         default="stdio",
         help="MCP transport mode",
     )
+    mcp_server.add_argument(
+        "--profile",
+        choices=["runtime", "admin"],
+        default="runtime",
+        help="Runtime exposes safe Agent tools; admin also exposes governance/debug tools",
+    )
+    mcp_server.add_argument("--host", default="127.0.0.1")
+    mcp_server.add_argument("--port", type=int, default=8000)
 
     return parser
 
@@ -547,7 +704,7 @@ def _models_json(models: Sequence[BaseModel]) -> list[dict[str, object] | None]:
     return [_model_json(model) for model in models]
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if args.command == "init-db":
@@ -556,10 +713,96 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command == "mcp-server":
-        run_mcp_server(db_path=args.db, transport=args.transport)
+        run_mcp_server(
+            db_path=args.db,
+            transport=args.transport,
+            profile=args.profile,
+            host=args.host,
+            port=args.port,
+        )
         return 0
 
     app = AltmApplication(args.db)
+
+    if args.command == "prepare-turn":
+        _dump(
+            _model_json(
+                app.prepare_turn(
+                    tenant_id=args.tenant_id,
+                    workspace_id=args.workspace_id,
+                    user_id=args.user_id,
+                    agent_id=args.agent_id,
+                    session_id=args.session_id,
+                    turn_id=args.turn_id,
+                    content=args.content,
+                    message_id=args.message_id,
+                    query=args.query,
+                    token_budget=args.token_budget,
+                    recall_limit=args.recall_limit,
+                    active_window_mode=args.active_window_mode,
+                    active_limit=args.active_limit,
+                    strict_session=args.strict_session,
+                )
+            )
+        )
+        return 0
+
+    if args.command == "commit-turn":
+        _dump(
+            _model_json(
+                app.commit_turn(
+                    tenant_id=args.tenant_id,
+                    workspace_id=args.workspace_id,
+                    user_id=args.user_id,
+                    agent_id=args.agent_id,
+                    cycle_id=args.cycle_id,
+                    assistant_content=args.assistant_content,
+                    cited_memory_ids=args.cited_memory_id or [],
+                    assistant_message_id=args.assistant_message_id,
+                )
+            )
+        )
+        return 0
+
+    if args.command == "pin-memory":
+        _dump(
+            _model_json(
+                app.pin_memory(
+                    scope=_scope_from_args(args),
+                    memory_id=args.memory_id,
+                    pinned=not args.unpin,
+                )
+            )
+        )
+        return 0
+
+    if args.command == "delete-memory":
+        _dump(
+            app.delete_memory(
+                scope=_scope_from_args(args),
+                memory_id=args.memory_id,
+                reason=args.reason,
+                physical=args.physical,
+            )
+        )
+        return 0
+
+    if args.command == "worker":
+        processed = 0
+        while args.max_jobs <= 0 or processed < args.max_jobs:
+            result = app.process_next_job(
+                worker_id=args.worker_id,
+                lease_seconds=args.lease_seconds,
+            )
+            if result["status"] == "idle":
+                if args.max_jobs > 0:
+                    _dump(result)
+                    return 0
+                time.sleep(max(0.05, args.poll_seconds))
+                continue
+            _dump(result)
+            processed += 1
+        return 0
 
     if args.command == "capture":
         memory = app.remember(
@@ -569,6 +812,78 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             message_id=args.message_id,
         )
         _dump(_model_json(memory))
+        return 0
+
+    if args.command == "runtime-cycle":
+        _dump(
+            app.runtime_cycle(
+                session_id=args.session_id,
+                content=args.content,
+                role=args.role,
+                message_id=args.message_id,
+                query=args.query,
+                token_budget=args.token_budget,
+                recall_limit=args.recall_limit,
+                active_window_mode=args.active_window_mode,
+                active_limit=args.active_limit,
+                strict_session=args.strict_session,
+                fold_l1=not args.skip_fold_l1,
+                extract_l2=not args.skip_extract_l2,
+                run_maintenance=not args.skip_maintenance,
+                maintenance_model=args.maintenance_model,
+                index_embeddings=args.index_embeddings,
+                embedding_limit=args.embedding_limit,
+            )
+        )
+        return 0
+
+    if args.command == "runtime-session-cycle":
+        _dump(
+            app.runtime_session_cycle(
+                session_id=args.session_id,
+                messages=[_parse_runtime_message(value) for value in args.message],
+                query=args.query,
+                token_budget=args.token_budget,
+                recall_limit=args.recall_limit,
+                active_window_mode=args.active_window_mode,
+                active_limit=args.active_limit,
+                strict_session=args.strict_session,
+                fold_l1=not args.skip_fold_l1,
+                extract_l2=not args.skip_extract_l2,
+                run_maintenance=not args.skip_maintenance,
+                maintenance_model=args.maintenance_model,
+                index_embeddings=args.index_embeddings,
+                embedding_limit=args.embedding_limit,
+            )
+        )
+        return 0
+
+    if args.command == "mvp-chat":
+        _dump(
+            app.mvp_chat(
+                session_id=args.session_id,
+                content=args.content,
+                role=args.role,
+                message_id=args.message_id,
+                assistant_content=args.assistant_content,
+                assistant_message_id=args.assistant_message_id,
+                cited_memory_ids=args.cited_memory_id or [],
+                turn_id=args.turn_id,
+                scope=_scope_from_args(args),
+                query=args.query,
+                token_budget=args.token_budget,
+                recall_limit=args.recall_limit,
+                active_window_mode=args.active_window_mode,
+                active_limit=args.active_limit,
+                strict_session=args.strict_session,
+                fold_l1=not args.skip_fold_l1,
+                extract_l2=not args.skip_extract_l2,
+                run_maintenance=not args.skip_maintenance,
+                maintenance_model=args.maintenance_model,
+                index_embeddings=args.index_embeddings,
+                embedding_limit=args.embedding_limit,
+            )
+        )
         return 0
 
     if args.command == "fold-l1":
@@ -728,7 +1043,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 persona_min_support=args.persona_min_support,
                 use_autonomous_governance=not args.skip_autonomous_governance,
                 autonomous_model_mode=args.autonomous_model_mode,
-                autonomous_rule_fallback=not args.disable_autonomous_rule_fallback,
+                autonomous_rule_fallback=False,
                 apply_review_actions=args.apply_review_actions_compat,
                 review_action_limit=args.review_action_limit,
                 include_rejected_review_actions=not args.approved_only_review_actions,
@@ -748,7 +1063,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 l3_threshold=args.l3_threshold,
                 persona_min_support=args.persona_min_support,
                 model_mode=args.model_mode,
-                rule_fallback=not args.disable_rule_fallback,
+                rule_fallback=False,
                 dry_run=args.dry_run,
                 limit=args.limit,
             )
@@ -869,6 +1184,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     raise ValueError("Unsupported command: %s" % args.command)
+
+
+def _parse_runtime_message(value: str) -> dict[str, object]:
+    if ":" not in value:
+        return {"role": MessageRole.USER.value, "content": value}
+    role, content = value.split(":", 1)
+    role = role.strip()
+    if role not in {item.value for item in MessageRole}:
+        return {"role": MessageRole.USER.value, "content": value}
+    return {"role": role, "content": content.strip()}
 
 
 if __name__ == "__main__":

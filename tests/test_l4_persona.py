@@ -1,11 +1,10 @@
-from contextlib import redirect_stdout
-from io import StringIO
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -110,7 +109,7 @@ class L4PersonaCandidateBuilderTest(unittest.TestCase):
             self.assertEqual(payload["status"], "complete")
             self.assertEqual(payload["steps"]["semantic_dedup"]["status"], "skipped")
             self.assertEqual(payload["steps"]["build_l4_persona_candidates"]["status"], "skipped")
-            self.assertEqual(payload["summary"]["autonomous_l4_applied_count"], 1)
+            self.assertEqual(payload["summary"]["autonomous_l4_applied_count"], 0)
 
 
 def _l2(

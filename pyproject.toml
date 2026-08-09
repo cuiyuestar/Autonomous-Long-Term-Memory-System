@@ -4,34 +4,41 @@ build-backend = "hatchling.build"
 
 [project]
 name = "altm"
-version = "0.1.0"
+version = "1.0.0"
 description = "Autonomous Long-Term Memory system for agent attention management"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "UNLICENSED" }
+license = "Apache-2.0"
 authors = [
   { name = "ALTM Contributors" }
 ]
 dependencies = [
   "jieba>=0.42.1",
-  "pydantic>=2.0"
+  "pydantic>=2.0",
+  "sqlite-vec>=0.1.9"
 ]
 
 [project.scripts]
 altm = "altm.cli:main"
+altm-benchmark = "altm.evaluation.cli:main"
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
   "pytest>=8.0",
   "ruff>=0.6",
   "pyright>=1.1"
 ]
 mcp = [
-  "mcp>=1.0"
+  "mcp>=1.28,<2.0"
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/altm"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schemas/sqlite/001_initial.sql" = "altm/schemas/sqlite/001_initial.sql"
+"configs/high_risk_flags.env" = "altm/configs/high_risk_flags.env"
 
 [tool.ruff]
 line-length = 100
@@ -39,9 +46,21 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = [
+  "E501",
+  "N801",
+  "RUF001",
+  "RUF015",
+  "SIM103",
+  "SIM108",
+  "SIM117",
+  "UP031",
+  "UP042",
+]
 
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
 include = ["src"]
+venvPath = "."
+venv = ".venv"

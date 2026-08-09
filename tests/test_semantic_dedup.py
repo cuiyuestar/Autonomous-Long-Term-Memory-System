@@ -1,9 +1,8 @@
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -16,7 +15,7 @@ from altm.contracts import (  # noqa: E402
     MemoryUnit,
     ScoreBreakdown,
 )
-from altm.governance import SemanticDedupPolicy, SemanticDeduper  # noqa: E402
+from altm.governance import SemanticDeduper, SemanticDedupPolicy  # noqa: E402
 from altm.storage import SQLiteMemoryStore  # noqa: E402
 from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 

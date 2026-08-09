@@ -1,304 +1,543 @@
-# ALTM (Autonomous Long-Term Memory)
+# ALTM: Autonomous Long-Term Memory
 
-具备自主治理、自主涌现和长期演化能力的 Agent 长期记忆系统。
+<div align="center">
 
-系统目标来自 `memory-system-development-plan.md`：用分层记忆、长期记忆、自主经验涌现、
-动态升级降级和动态权重调整，帮助 Agent 管理有限注意力。
+**面向 Agent 的本地优先、分层、可追溯长期记忆运行时**
 
-## Phase 1 边界
+[![Version](https://img.shields.io/badge/version-1.0.0-2563EB)](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![CI](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/actions/workflows/ci.yml/badge.svg)](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/actions/workflows/ci.yml)
+[![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20HTTP-111827)](https://modelcontextprotocol.io/)
+[![License](https://img.shields.io/badge/License-Apache--2.0-22C55E)](LICENSE)
 
-Phase 1 已完成契约和骨架：
+[快速开始](#快速开始) · [核心能力](#核心能力) · [Agent-接入](#agent-接入) · [MCP-接入](#mcp-接入) · [Host-适配器](#host-适配器) · [评估](#评估)
 
-1. Python 作为控制面和公共 API 源头。
-2. TypeScript 作为未来 Agent adapter 层，声明 Node 22 工具链。
-3. 本地存储先落 SQLite + FTS5，向量、图数据库和 Headroom 深度压缩只保留接口。
-4. 先定义 L0-L4、生命周期、证据链、召回和上下文网关边界。
-5. 所有重大技术选择保留 human-in-loop 确认门。
+</div>
 
-## Phase 2 当前能力
+---
 
-Phase 2 进入 `L0 + L1 mock` 最小闭环：
+## 项目简介
 
-1. `capture` 将原始消息写入 L0 MemoryUnit。
-2. SQLite store 支持 MemoryUnit upsert、按 ID 读取、FTS5 索引和 evidence refs。
-3. `fold-l1` 对同一 session 的 L0 生成规则版 L1 ContextCapsule。
-4. `search` 通过 SQLite FTS5 召回 L0/L1。
-5. MCP adapter 提供 `memory_remember`、`memory_fold_l1`、`memory_recall`、`memory_drilldown` 工具入口。
+ALTM（Autonomous Long-Term Memory）不是聊天记录仓库，也不是把全部历史切片后堆进向量数据库的检索包装器。它是一个独立的 Agent Memory Runtime，负责在 Host Agent 之外完成：
 
-Python 3.11 和 MCP 运行环境已经在项目内隔离配置完成，MCP stdio 与 SSE 都已验证通过。
+- 原始对话的无损持久化；
+- 分层语义折叠与证据抽取；
+- 场景、画像和异构图的持续形成；
+- FTS、向量、Graph PPR 与 RRF 融合召回；
+- 生命周期晋升、降级、压缩、保留与删除；
+- 向 Agent 注入受预算约束、可下钻、可验证的上下文；
+- 将 Agent 的真实引用和用户反馈写回记忆生命周期。
 
-## Phase 3 当前能力
+核心回合协议只有两步：
 
-Phase 3 进入 `真实 L2 抽取` 最小闭环：
-
-1. `extract-l2` 从 L1 ContextCapsule 调用 OpenAI-compatible LLM 抽取 L2 atoms。
-2. L2 同时写入 L2 MemoryUnit 和按类型拆分的结构化表。
-3. L2 默认 `review_status=pending`，不会自动进入长期画像。
-4. `search` 支持 `--layer`、`--session-id`、`--status` 过滤。
-5. MCP adapter 新增 `memory_extract_l2`，并为 `memory_recall` 增加过滤参数。
-
-模型配置通过环境变量提供：
-
-```bash
-export ALTM_LLM_BASE_URL="https://example.com/v1"
-export ALTM_LLM_API_KEY="..."
-export ALTM_LLM_MODEL="your-model"
+```text
+prepare_turn -> Host Agent 生成真实回复 -> commit_turn
 ```
 
-## Phase 4 当前能力
+ALTM 不生成模板 Assistant 回复，不把全部注入内容伪装成已引用，也不会在语义模型缺失时用规则输出冒充 LLM 判断。
 
-Phase 4 进入 `检索增强 + 最小治理`：
+## 为什么使用 ALTM
 
-1. 统一召回优先使用本地 lexical vector，再合并 trigram FTS、unicode FTS 和 LIKE fallback。
-2. 中文短语召回已通过真实 DeepSeek L2 回归验证。
-3. L1 ContextCapsule 已双写到结构化表 `l1_context_capsules`。
-4. L2 exact dedup 已接入，完全相同的 L2 文本不会重复写入。
-5. 新增 `feedback` CLI 和 MCP `memory_feedback`，记录生命周期访问/有用性信号。
+传统 Agent Memory 常见的失效模式包括：
 
-Phase 4 细节见 [Phase 4 Scope](docs/phase-4-scope.md) 和 [ADR 0004](docs/adr/0004-retrieval-feedback-dedup.md)。
+| 失效模式 | ALTM 的处理方式 |
+|---|---|
+| 原始事实被摘要覆盖，无法追溯 | L0 append-only；所有高层记忆保留 evidence refs |
+| 向量召回只找到相似文本，缺少关系和时间 | Entity/Task/Intent/Time 异构图 + scoped PPR |
+| 全部历史直接塞入 Prompt | ContextBundle、token budget、ContentRouter、CCR |
+| 多 Agent 数据串扰 | `tenant/workspace/user/agent` 四级隔离 |
+| 用户画像被一次临时要求污染 | 跨 session/Agent 证据门 + L4 observation |
+| 新旧画像同时生效 | `facet_key` 单 current 约束 + 高置信 supersede |
+| LLM 不可用时执行危险治理动作 | fail-closed：P0 语义动作延后，不规则兜底 |
+| “被注入”被误算为“被使用” | `injected` 与 `cited_by_agent` 独立记录 |
 
-## 当前新增：真实向量模型接入
+## 30 秒架构
 
-已接入 OpenAI-compatible `/embeddings` 向量模型，并保留本地 lexical/FTS 作为回退通道：
+```mermaid
+flowchart LR
+    U[User Turn] --> P[prepare_turn]
+    P --> L0[(L0 Raw Messages)]
+    P --> R[Hybrid Recall]
+    R --> C[ContextBundle]
+    C --> H[Host Agent]
+    H --> M[commit_turn]
+    M --> L0
+    M --> F[Real citations and feedback]
 
-1. `.env.local` 使用独立的 `ALTM_EMBEDDING_*` 配置，不复用聊天模型配置。
-2. `index-embeddings` 将缺失或内容变更的 MemoryUnit 写入 `memory_embeddings` 缓存表。
-3. `search` 和 MCP `memory_recall` 在 embedding 环境变量完整时启用 `remote_vector` 通道。
-4. 远程 embedding 查询失败时，召回链路会退回本地 lexical vector、trigram FTS、unicode FTS 和 LIKE fallback。
+    L0 --> J[Persistent Job Queue]
+    J --> L1[L1 Context Capsule]
+    L1 --> L2[L2 Typed Atoms]
+    L2 --> G[Entity and Temporal Graph]
+    L2 --> L3[L3 Scene]
+    L2 --> L4[L4 Persona]
 
-配置变量：
-
-```bash
-export ALTM_EMBEDDING_BASE_URL="https://example.com/compatible-mode/v1"
-export ALTM_EMBEDDING_API_KEY="..."
-export ALTM_EMBEDDING_MODEL="text-embedding-v4"
-export ALTM_EMBEDDING_TIMEOUT_SECONDS="60"
+    G --> R
+    L3 --> R
+    L4 --> R
+    F --> LC[Lifecycle and Governance]
+    LC --> R
 ```
 
-接入说明见 [Vector Embedding Integration](docs/vector-embedding-integration.md) 和 [ADR 0005](docs/adr/0005-openai-compatible-embedding.md)。
+### 记忆分层
 
-## Phase 5 当前能力
+| 层级 | 语义 | 默认可见性 | 形成方式 |
+|---|---|---|---|
+| L0 | 原始用户、Assistant、Tool 消息 | Agent 私有 | append-only capture |
+| L1 | 会话上下文胶囊 | Agent 私有 | 增量 LLM summarization |
+| L2 | preference、decision、issue、task 等原子事实 | Agent 私有 | 结构化 LLM extraction |
+| L3 | 项目、任务、主题、关系、工作流 Scene | Agent 私有 | embedding candidates + 多模型 Gate |
+| L4 | 稳定用户画像 Persona Facet | 同用户工作区共享 | 跨 session/Agent 证据 + observation |
 
-Phase 5 用户选择四条线都做：生命周期治理、语义去重合并、Context Gateway、L3 场景聚类。当前已完成四条线的最小闭环：
+L0-L3 默认隔离到 `agent_id`。L4 仅在相同 `tenant_id / workspace_id / user_id` 内跨 Agent 共享。
 
-1. 新增 `govern-lifecycle` CLI，显式运行 residentScore 评分周期。
-2. `feedback` 产生的访问和有用性信号会进入下一次 residentScore 计算。
-3. `pending` / `rejected` L2 会在长期评分和召回排序中降权。
-4. 新增 promotion/demotion candidate 标记，不自动晋升、降级或删除。
-5. `retrievalScore` 继续表示当前 query 相关性，`residentScore` 只做小幅排序调整。
-6. 新增 `semantic-dedup` CLI，基于缓存 embedding 标记 L2 语义重复候选。
-7. 语义重复只写 `semantic_duplicate_candidate` graph edge，不自动合并或删除。
-8. 新增 `build-context` CLI 和 MCP `memory_build_context`，把 recall candidates 组装为上下文包。
-9. Context Gateway 支持 immediate / working / background 分段、预算裁剪和 `memory://` 下钻标记。
-10. 新增 `cluster-l3` CLI 和 MCP `memory_cluster_l3`，从 L2 分组生成 observing L3 scene。
-11. L3 scene 保留到来源 L2 的 evidence refs，暂不使用 LLM 自动命名。
+## 核心能力
 
-Phase 5 细节见 [Phase 5 Scope](docs/phase-5-scope.md) 和 [ADR 0006](docs/adr/0006-lifecycle-governance.md)。
+### 真实运行时协议
 
-## Phase 6A 当前能力
+- `prepare_turn` 原子写入用户消息、召回上下文和 runtime cycle。
+- `commit_turn` 只接受 Host Agent 的真实回复。
+- 引用 ID 必须来自本轮 prepared context，否则提交失败。
+- prepare/commit 均支持幂等重试和内容冲突检测。
+- SQLite job queue 提供 lease、retry、dedupe 和 checkpoint。
 
-Phase 6A 补齐 human-in-loop 审查入口：
+### 分层语义形成
 
-1. 新增 `review-queue` CLI 和 MCP `memory_review_queue`。
-2. 新增 `review-mark` CLI 和 MCP `memory_review_mark`。
-3. 新增 `review-plan` CLI 和 MCP `memory_review_plan`。
-4. 新增 `review-apply` CLI 和 MCP `memory_review_apply`。
-5. 新增 `review-events` CLI 和 MCP `memory_review_events`。
-6. 新增 `review-audit` CLI 和 MCP `memory_review_audit`。
-7. 统一列出 L2 pending、promotion/demotion candidate、semantic duplicate candidate、L3 observing。
-8. 审查只标记 `pending` / `approved` / `rejected`。
-9. L2 review status 会同步 MemoryUnit metadata 和 L2 typed table。
-10. `review-plan` 只生成 proposed action，标出风险和是否需要二次确认。
-11. `review-apply` 默认 dry-run；必须 `--confirm` 才会改库，高风险动作还需要 `--second-confirm`。
-12. duplicate resolution 不自动 merge/tombstone，只标记为待选择 canonical memory。
-13. `review-mark` 和确认执行成功的 `review-apply` 会写入 append-only audit event；dry-run 不写事件。
-14. `review-audit` 汇总审查队列、action plan 和审计事件，不修改数据库。
+- L1/L2 使用真实 OpenAI-compatible Chat API。
+- L3/L4 使用并行 reranker、NLI、scope classifier 和层级 Rubric。
+- Semantic Gate 缺模型、低置信、非法输出时保持 fail-closed。
+- L3/L4 使用 typed table + `MemoryUnit` 双写。
+- L4 高置信新证据覆盖时保留写前快照、旧证据和 `SUPERSEDES` 链。
 
-Phase 6 细节见 [Phase 6 Scope](docs/phase-6-scope.md) 和 [ADR 0007](docs/adr/0007-human-review-queue.md)。
+### 混合检索
 
-## Phase 6B 当前能力
+- SQLite FTS5 `unicode61` 与 trigram。
+- 本地 lexical vector。
+- OpenAI-compatible embedding + sqlite-vec cosine index。
+- Entity/Temporal 图入口。
+- Personalized PageRank 与最短相关子图解释。
+- remote vector、local vector、FTS、Graph PPR 通过标准 RRF 融合。
+- RRF 支持同内容并列排名，避免状态标签造成隐式降权。
 
-Phase 6B 将只生成候选、不自动处置的管理能力开放到 MCP：
+### 生命周期与上下文控制
 
-1. 新增 MCP `memory_index_embeddings`，显式构建或刷新 embedding 缓存。
-2. 新增 MCP `memory_govern_lifecycle`，显式运行 residentScore 评分周期。
-3. 新增 MCP `memory_semantic_dedup`，基于缓存 embedding 标记 L2 语义重复候选。
-4. 这些工具只写入索引、评分和待审候选，不自动合并、删除、晋升或降级。
+- 动态 promotion/demotion threshold。
+- age table、promotion failure、连续周期门、证据质量和冲突门。
+- L0 默认永久保留；支持 TTL、用户删除和法规删除。
+- C0-C4 压缩生命周期。
+- ContentRouter 按 JSON、代码、日志、自然语言选择压缩器。
+- CCR 保存压缩前原文，可通过 `memory://<id>#<hash>` 下钻。
 
-## Phase 7A 当前能力
+### 安全与治理
 
-Phase 7A 实现 Query-Induced Emergence Window 的最小闭环：
+- SQLite WAL、busy timeout、事务化批量写入。
+- 远程 MCP 使用 SHA-256 API Key、scope 或自定义 OIDC/JWT verifier。
+- runtime/admin MCP profile 隔离。
+- 显式 deletion request、tombstone、物理删除和 evidence fallback repair。
+- 召回内容按“不可信历史证据”注入，避免记忆中的指令直接成为系统指令。
 
-1. 新增 `emerge` CLI，从普通召回结果中选出 query entry points。
-2. 新增 `QueryEmergenceEngine`，沿 SQLite graph edge 做轻量 PPR 式扩散。
-3. 新增 MCP `memory_emerge`，让 Agent 可在 query 后主动涌现相邻经验。
-4. graph edge 已被人工拒绝时不会参与扩散。
-5. query 后涌现与 query 前 Global Active Window 保持为两个显式入口。
+## 快速开始
 
-## Phase 7B 当前能力
+### 环境要求
 
-Phase 7B 实现 query 前 Global Active Window，并已接入默认 `build-context`：
+| 依赖 | 要求 |
+|---|---|
+| Python | 3.11 或更高 |
+| SQLite | 支持 FTS5 |
+| LLM API | OpenAI-compatible Chat API |
+| Embedding API | OpenAI-compatible Embeddings API |
+| MCP | 可选，安装 `mcp` extra |
 
-1. 新增 `GlobalActiveWindowEngine`，在没有用户 query 时选择主动工作集。
-2. 新增 `active-window` CLI，输出可直接注入的 `ContextBundle`。
-3. 新增 MCP `memory_active_window`，让 Agent 在任务开始前获取全局活跃记忆窗口。
-4. 新增 `active-window-report` CLI 和 MCP `memory_active_window_report`，解释记忆入选或过滤原因。
-5. 默认从 L2/L3/L4 中选择 active/observing、高 residentScore、长期生命周期或当前 session 相关记忆。
-6. pending/rejected L2、rejected governance item、tombstoned/deleted memory 不进入主动窗口。
-7. 新增 `build-fused-context` CLI 和 MCP `memory_build_fused_context`，显式预览 query recall + active window 的融合上下文。
-8. 新增 `build-fused-context-report` CLI 和 MCP `memory_build_fused_context_report`，解释融合候选来源、去重和最终注入结果。
-9. 新增 `compare-fused-context` CLI 和 MCP `memory_compare_fused_context`，对比默认 query context 与 fused context 的注入差异。
-10. 新增 `compare-fused-context-batch` CLI 和 MCP `memory_compare_fused_context_batch`，跨多条 query 汇总融合增量。
-11. `build-context` 默认使用 `active-window-mode=full`；如需历史行为，可显式传入 `--active-window-mode off`。
+### 安装
 
-Phase 7 细节见 [Phase 7 Scope](docs/phase-7-scope.md)。
+```bash
+git clone https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System.git
+cd Autonomous-Long-Term-Memory-System
 
-## 参考设计吸收
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -e ".[mcp]"
 
-| 来源 | 吸收点 |
-| --- | --- |
-| TencentDB-Agent-Memory | L0 原文保真、分层记忆、SQLite/FTS/sqlite-vec 后端、OpenClaw/Hermes adapter 思路 |
-| CogniFold | typed graph、UpdatePlan/Executor、PageRank/recency/access/urgency 评分、BM25/vector/RRF/PPR 检索 |
-| Headroom | Headroom 压缩层、ContentRouter、CCR retrieval marker、压缩不等于删除 |
-| JDK GC | 分代治理、age table、动态晋升阈值、promotion failure、低频 major governance |
+cp .env.example .env
+```
 
-## 工程结构
+至少配置共享 Chat Model 与 Embedding Model：
+
+```bash
+export ALTM_LLM_BASE_URL="https://provider.example.com/v1"
+export ALTM_LLM_API_KEY="your-api-key"
+export ALTM_LLM_MODEL="your-chat-model"
+
+export ALTM_EMBEDDING_BASE_URL="https://provider.example.com/v1"
+export ALTM_EMBEDDING_API_KEY="your-api-key"
+export ALTM_EMBEDDING_MODEL="your-embedding-model"
+```
+
+初始化数据库：
+
+```bash
+.venv/bin/altm init-db --db ./data/altm.sqlite3
+```
+
+所有可配置项见 [.env.example](.env.example)。L1、L2、Graph、Governance、reranker、NLI、scope、L3、L4 和 Headroom 均支持阶段级模型覆盖。
+
+## Agent 接入
+
+### Python
+
+```python
+from altm.application import AltmApplication
+
+app = AltmApplication("./data/altm.sqlite3")
+
+prepared = app.prepare_turn(
+    tenant_id="tenant-1",
+    workspace_id="workspace-1",
+    user_id="user-1",
+    agent_id="agent-1",
+    session_id="session-1",
+    turn_id="turn-1",
+    content="我们决定在 9 月 1 日前发布 ALTM。",
+    token_budget=1200,
+)
+
+# 由你的 Host Agent 使用 prepared.context 调用真实模型。
+assistant_content = host_agent.generate(prepared.context)
+
+committed = app.commit_turn(
+    tenant_id="tenant-1",
+    workspace_id="workspace-1",
+    user_id="user-1",
+    agent_id="agent-1",
+    cycle_id=prepared.cycle_id,
+    assistant_content=assistant_content,
+    cited_memory_ids=host_agent.cited_memory_ids,
+)
+```
+
+`cited_memory_ids` 必须是 Host Agent 实际使用的记忆，不应传入全部 context IDs。
+
+### CLI
+
+Prepare：
+
+```bash
+.venv/bin/altm prepare-turn \
+  --db ./data/altm.sqlite3 \
+  --tenant-id tenant-1 \
+  --workspace-id workspace-1 \
+  --user-id user-1 \
+  --agent-id agent-1 \
+  --session-id session-1 \
+  --turn-id turn-1 \
+  --content "我们决定在 9 月 1 日前发布 ALTM。"
+```
+
+Commit：
+
+```bash
+.venv/bin/altm commit-turn \
+  --db ./data/altm.sqlite3 \
+  --tenant-id tenant-1 \
+  --workspace-id workspace-1 \
+  --user-id user-1 \
+  --agent-id agent-1 \
+  --cycle-id "<cycle_id>" \
+  --assistant-content "发布截止日期是 9 月 1 日。" \
+  --cited-memory-id "<实际引用的 memory_id>"
+```
+
+运行后台 worker：
+
+```bash
+.venv/bin/altm worker \
+  --db ./data/altm.sqlite3 \
+  --worker-id worker-1
+```
+
+生产环境应以守护进程方式持续运行一个或多个 worker。任务通过 SQLite lease 协调，不需要额外队列服务。
+
+## MCP 接入
+
+### 本地 stdio
+
+启动 runtime profile：
+
+```bash
+.venv/bin/altm mcp-server \
+  --db ./data/altm.sqlite3 \
+  --transport stdio \
+  --profile runtime
+```
+
+通用 MCP Client 配置示例：
+
+```json
+{
+  "mcpServers": {
+    "altm": {
+      "command": "/absolute/path/to/.venv/bin/altm",
+      "args": [
+        "mcp-server",
+        "--db",
+        "/absolute/path/to/data/altm.sqlite3",
+        "--transport",
+        "stdio",
+        "--profile",
+        "runtime"
+      ]
+    }
+  }
+}
+```
+
+runtime profile 只暴露：
+
+```text
+memory_prepare_turn
+memory_commit_turn
+memory_mvp_chat
+memory_drilldown
+memory_feedback
+memory_pin
+memory_unpin
+memory_delete
+```
+
+治理、索引、回滚和兼容 review 工具只在 `--profile admin` 下提供。
+
+### 远程 Streamable HTTP
+
+服务端只保存 API Key 的 SHA-256：
+
+```bash
+export ALTM_MCP_API_KEY_SHA256="$(
+  printf '%s' 'your-runtime-secret' | shasum -a 256 | awk '{print $1}'
+)"
+
+.venv/bin/altm mcp-server \
+  --db ./data/altm.sqlite3 \
+  --transport streamable-http \
+  --profile runtime \
+  --host 127.0.0.1 \
+  --port 8000
+```
+
+多 Key 和 scope 使用 `ALTM_MCP_API_KEYS_JSON`。企业 OIDC/JWT 可通过 `ALTM_MCP_TOKEN_VERIFIER_FACTORY=module.path:factory` 接入。
+
+详细协议、幂等语义和失败模式见 [Agent Runtime Protocol](docs/agent-runtime-protocol.md)。
+
+## Host 适配器
+
+### TypeScript SDK
+
+SDK 源码位于 [`adapters/typescript`](adapters/typescript)，包名为 `@altm/sdk`。
+
+```typescript
+import {
+  AltmRuntimeClient,
+  AltmTurnCoordinator,
+  StreamableHttpToolCaller
+} from "@altm/sdk";
+
+const caller = await StreamableHttpToolCaller.connect({
+  url: "http://127.0.0.1:8000/mcp",
+  apiKey: process.env.ALTM_API_KEY
+});
+
+const coordinator = new AltmTurnCoordinator(
+  new AltmRuntimeClient(caller)
+);
+
+const turn = await coordinator.prepare({
+  scope: {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    agentId: "agent-1"
+  },
+  sessionId: "session-1",
+  turnId: crypto.randomUUID(),
+  content: "What is our release deadline?"
+});
+
+const answer = await hostAgent.generate(turn.injectedContext);
+await coordinator.commit({
+  prepared: turn.prepared,
+  assistantContent: answer
+});
+```
+
+Coordinator 只从 Assistant 输出中的真实 `memory://...` marker 推断引用；支持结构化引用的 Host 应显式传入 `citedMemoryIds`。
+
+### OpenClaw
+
+OpenClaw lifecycle adapter 位于 [`adapters/openclaw`](adapters/openclaw)，目标包名为 `@altm/openclaw`。它通过：
+
+```text
+before_prompt_build -> memory_prepare_turn
+agent_end           -> memory_commit_turn
+```
+
+完成自动召回和回写，并跳过 incognito session。配置字段包括 MCP endpoint、API Key 和稳定的 tenant/workspace/user IDs。
+
+本仓库只提供 adapter 源码与 manifest；OpenClaw 运行验证应在允许安装 OpenClaw 的合规环境完成。
+
+### Hermes
+
+Hermes adapter 位于 [`adapters/hermes`](adapters/hermes)。先把 ALTM 注册为 Hermes MCP Server：
+
+```yaml
+mcp_servers:
+  altm:
+    url: "http://127.0.0.1:8000/mcp"
+    headers:
+      Authorization: "Bearer ${ALTM_API_KEY}"
+    tools:
+      include:
+        - memory_prepare_turn
+        - memory_commit_turn
+```
+
+安装并启用插件：
+
+```bash
+cp -R adapters/hermes ~/.hermes/plugins/altm-memory
+hermes plugins enable altm-memory
+```
+
+插件使用 `pre_llm_call` 注入 ContextBundle，并在 `post_llm_call` 提交真实 Assistant 回复和 marker 引用。
+
+## 配置模型
+
+所有模型均使用 OpenAI-compatible API。阶段配置为空时继承 `ALTM_LLM_*`：
+
+| 阶段 | 环境变量前缀 | 用途 |
+|---|---|---|
+| L1 | `ALTM_L1_LLM_*` | 会话上下文胶囊 |
+| L2 | `ALTM_L2_LLM_*` | 原子事实抽取 |
+| Graph | `ALTM_GRAPH_LLM_*` | Entity/Task/Intent/Time 图 |
+| Governance | `ALTM_GOVERNANCE_LLM_*` | 自治治理裁决 |
+| Reranker | `ALTM_RERANKER_LLM_*` | 语义候选重排 |
+| NLI | `ALTM_NLI_LLM_*` | entail/contradict/neutral |
+| Scope | `ALTM_SCOPE_LLM_*` | session/project/workspace 边界 |
+| L3 | `ALTM_L3_LLM_*` | Scene Rubric 与合成 |
+| L4 | `ALTM_L4_LLM_*` | Persona Rubric、合成与覆盖 |
+| Headroom | `ALTM_HEADROOM_LLM_*` | 自然语言压缩 |
+
+关键非模型配置：
+
+| 变量 | 默认值 | 说明 |
+|---|---:|---|
+| `ALTM_SEMANTIC_MIN_SCORE` | `0.80` | 语义 Gate 最低置信度 |
+| `ALTM_L4_OVERWRITE_MIN_CONFIDENCE` | `0.90` | L4 覆盖阈值 |
+| `ALTM_L0_RETENTION_DAYS` | `0` | `0` 表示永久保留 |
+| `ALTM_LONG_MEMORY_TOKEN_BUDGET` | `100000` | 长期记忆预算 |
+| `ALTM_CONTEXT_TOKENIZER` | `tiktoken` | 可选精确 token 预算 |
+
+## 数据与安全边界
+
+1. 所有 MemoryUnit 都带显式 scope。
+2. L4 共享不会放宽 L0-L3 的 Agent 私有边界。
+3. 远程 transport 必须认证；stdio 仅用于本地可信进程。
+4. API Key 明文只存在于 Client，服务端保存 SHA-256。
+5. 删除流程保留 deletion request、tombstone 和 evidence repair 记录。
+6. 记忆内容是“不可信历史证据”，不应直接提升为系统指令。
+7. 自治治理对 P0 动作 fail-closed，模型缺失时不会执行语义合并或覆盖。
+
+安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
+
+## 评估
+
+ALTM 提供本地数据适配器：
+
+- LongMemEval；
+- LoCoMo；
+- HMAC 匿名化真实 Agent trace。
+
+运行 LongMemEval 召回评估：
+
+```bash
+.venv/bin/altm-benchmark run \
+  --format longmemeval \
+  --dataset /approved/path/longmemeval_s_cleaned.json \
+  --db ./data/benchmark.sqlite3 \
+  --output ./reports/longmemeval.json \
+  --top-k 5 \
+  --top-k 10 \
+  --enrichment l0
+```
+
+`--enrichment l0` 不调用模型；`l2` 和 `full` 会真实运行对应模型链，缺配置时失败，不生成 mock 结果。
+
+报告包含 Recall-any@K、Recall-all@K、nDCG@K、MRR、p50/p95/p99 延迟、数据集 SHA-256、分类汇总和逐题证据。
+
+仓库不下载、不内置、不重分发公开数据集，也不宣传尚未执行的 benchmark 分数。完整方法见 [Evaluation Guide](docs/evaluation.md)。
+
+## 项目结构
 
 ```text
 .
-├── adapters/typescript/       # Node 22 adapter 声明层
-├── configs/                   # 配置样例
-├── docs/                      # 架构决策与阶段说明
-├── schemas/sqlite/            # SQLite + FTS5 schema
-├── src/altm/                  # Python 控制面骨架
-└── tests/                     # 骨架级验证
+├── src/altm/
+│   ├── capture/          # L0 append-only capture
+│   ├── folding/          # L1/L2/Graph/L3/L4
+│   ├── retrieval/        # FTS/vector/RRF/PPR/subgraph
+│   ├── context/          # ContextBundle/Headroom/CCR
+│   ├── lifecycle/        # promotion/demotion/retention/compression
+│   ├── governance/       # fail-closed autonomous governance
+│   ├── evaluation/       # LongMemEval/LoCoMo/anonymous trace
+│   ├── storage/          # scoped SQLite/jobs/checkpoints
+│   └── adapters/mcp/     # runtime/admin MCP profiles
+├── adapters/
+│   ├── typescript/       # @altm/sdk
+│   ├── openclaw/         # OpenClaw lifecycle plugin
+│   └── hermes/           # Hermes hooks plugin
+├── schemas/sqlite/       # packaged SQLite schema
+├── docs/                 # protocol, evaluation, ADRs
+└── tests/                # unit and integration tests
 ```
 
-## 本地验证
-
-当前机器未检测到 Node/npm/pnpm，因此 TypeScript 只提交声明性骨架，暂不运行构建。
-
-Python 3.11 环境已用项目隔离方式配置在 `.venv`，底层解释器由 `.tools/uv/uv` 安装到 `.tools/python`。MCP stdio 与 SSE 完整工具链验证记录见 [MCP Runtime Verification](docs/mcp-runtime-verification.md)。
-
-真实 DeepSeek LLM 接入、CLI L2 抽取和 MCP L2 抽取验证记录见 [Real LLM Validation](docs/real-llm-validation.md)。
+## 开发与验证
 
 ```bash
-.venv/bin/python -m compileall src tests
-.venv/bin/python -m unittest discover -s tests
-sqlite3 :memory: < schemas/sqlite/001_initial.sql
-.venv/bin/python -m altm.cli init-db --db /tmp/altm.sqlite3
-.venv/bin/python -m altm.cli capture \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo \
-  --message-id u1 \
-  --role user \
-  --content "我们决定采用 SQLite FTS，并需要确认 MCP 双模式。"
-.venv/bin/python -m altm.cli fold-l1 \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo
-.venv/bin/python -m altm.cli extract-l2 \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo
-.venv/bin/python -m altm.cli index-embeddings \
-  --db /tmp/altm.sqlite3 \
-  --limit 100
-.venv/bin/python -m altm.cli govern-lifecycle \
-  --db /tmp/altm.sqlite3 \
-  --limit 1000
-.venv/bin/python -m altm.cli semantic-dedup \
-  --db /tmp/altm.sqlite3 \
-  --model text-embedding-v4 \
-  --threshold 0.92
-.venv/bin/python -m altm.cli build-context \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --token-budget 1200 \
-  --limit 5
-.venv/bin/python -m altm.cli cluster-l3 \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo \
-  --min-group-size 2
-.venv/bin/python -m altm.cli review-queue \
-  --db /tmp/altm.sqlite3 \
-  --limit 100
-.venv/bin/python -m altm.cli review-mark \
-  --db /tmp/altm.sqlite3 \
-  --target-type memory_unit \
-  --target-id l2_xxx \
-  --kind l2_pending \
-  --status approved
-.venv/bin/python -m altm.cli review-plan \
-  --db /tmp/altm.sqlite3 \
-  --limit 100
-.venv/bin/python -m altm.cli review-apply \
-  --db /tmp/altm.sqlite3 \
-  --plan-id review_action_xxx \
-  --confirm \
-  --second-confirm
-.venv/bin/python -m altm.cli review-events \
-  --db /tmp/altm.sqlite3 \
-  --target-id l2_xxx
-.venv/bin/python -m altm.cli review-audit \
-  --db /tmp/altm.sqlite3
-.venv/bin/python -m altm.cli search \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --layer L2 \
-  --session-id demo \
-  --limit 5
-.venv/bin/python -m altm.cli emerge \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --layer L2 \
-  --limit 5 \
-  --seed-limit 8 \
-  --max-hops 2
-.venv/bin/python -m altm.cli active-window \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo \
-  --token-budget 1200 \
-  --limit 5
-.venv/bin/python -m altm.cli active-window-report \
-  --db /tmp/altm.sqlite3 \
-  --session-id demo \
-  --decision-limit 100 \
-  --limit 5
-.venv/bin/python -m altm.cli build-fused-context \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --session-id demo \
-  --recall-limit 5 \
-  --active-limit 5 \
-  --token-budget 1200
-.venv/bin/python -m altm.cli build-fused-context-report \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --session-id demo \
-  --recall-limit 5 \
-  --active-limit 5 \
-  --token-budget 1200
-.venv/bin/python -m altm.cli compare-fused-context \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --session-id demo \
-  --recall-limit 5 \
-  --active-limit 5 \
-  --token-budget 1200
-.venv/bin/python -m altm.cli compare-fused-context-batch \
-  --db /tmp/altm.sqlite3 \
-  --query SQLite \
-  --query MCP \
-  --session-id demo \
-  --recall-limit 5 \
-  --active-limit 5 \
-  --token-budget 1200
+.venv/bin/python -m compileall -q src tests adapters/hermes
+.venv/bin/ruff check src tests adapters/hermes
+.venv/bin/pyright
+.venv/bin/python -m unittest discover -s tests -v
+sqlite3 :memory: ".read schemas/sqlite/001_initial.sql"
+.venv/bin/python -m build
 ```
 
-## 下一批确认点
+1.0.0 发布基线：
 
-1. 是否允许 Global Active Window 并入默认 `build-context` 主链路。
-2. Phase 5B 是否允许自动合并高相似 L2，或只生成待审候选。
-3. Context Gateway 是否接真实 tokenizer。
-4. L3 场景聚类是否需要 LLM 参与命名和摘要。
-5. L3 是否从 session 内规则聚类升级为跨 session embedding 聚类。
-6. review audit 是否升级为独立更完整的审计模型。
+```text
+154 tests passed
+Ruff passed
+Strict Pyright: 0 errors, 0 warnings
+sdist/wheel build passed
+isolated Python 3.11 wheel initialization passed
+Streamable HTTP auth: invalid 401 / valid initialize 200
+```
+
+## 版本边界
+
+ALTM 1.0.0 已实现同 scope 高置信 L4 supersede、C0-C4 压缩状态和本地 SQLite CCR。以下能力不在 1.0.0 承诺范围内：
+
+- 自动语义 scope split；
+- 独立冷对象存储后端；
+- 未在合规环境执行的 OpenClaw runtime 兼容性声明；
+- 未实际运行的公开 benchmark 性能数字。
+
+发布验证由 [GitHub Actions CI](.github/workflows/ci.yml) 持续执行。
+
+## 贡献
+
+提交 Issue 或 Pull Request 前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。代码变更必须保持：
+
+- 生产路径无 mock LLM 响应；
+- L0 原文与 evidence chain 不被破坏；
+- scope 隔离不放宽；
+- P0 治理动作 fail-closed；
+- 测试、Ruff 和 Strict Pyright 通过。
+
+## License
+
+ALTM 使用 [Apache License 2.0](LICENSE)。

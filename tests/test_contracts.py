@@ -1,7 +1,6 @@
-from pathlib import Path
 import sys
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -15,9 +14,9 @@ from altm.contracts import (  # noqa: E402
     LifecycleState,
     MemoryLayer,
     MemoryStatus,
-    ReviewApplyResult,
     ReviewActionRisk,
     ReviewActionType,
+    ReviewApplyResult,
     ReviewAuditSummary,
     ReviewEvent,
     ReviewItemKind,

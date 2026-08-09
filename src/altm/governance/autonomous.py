@@ -8,10 +8,10 @@ optional model evaluators are unavailable.
 from __future__ import annotations
 
 import json
-import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import sqrt
-from typing import Sequence
+from typing import cast
 
 from altm.contracts import (
     EvidenceRef,
@@ -23,11 +23,10 @@ from altm.contracts import (
     MemoryUnit,
 )
 from altm.folding.l4_persona import PERSONA_ATOM_TYPES
-from altm.governance.semantic_dedup import SemanticDedupPolicy, SemanticDeduper
+from altm.governance.semantic_dedup import SemanticDeduper, SemanticDedupPolicy
 from altm.llm import OpenAICompatibleClient, llm_config_from_env
 from altm.storage import SQLiteMemoryStore
 from altm.utils import sha256_text, stable_id, utc_now_iso
-
 
 AUTONOMOUS_EVENT_EVALUATED = "autonomous_governance_evaluated"
 AUTONOMOUS_EVENT_DECIDED = "autonomous_governance_decided"
@@ -36,8 +35,6 @@ AUTONOMOUS_EVENT_DEGRADED = "autonomous_governance_degraded"
 AUTONOMOUS_EVENT_ROLLED_BACK = "autonomous_governance_rolled_back"
 AUTONOMOUS_POLICY_VERSION = "autonomous_governance_v1"
 CROSS_SESSION_L3_EDGE = "cross_session_l3_candidate"
-_TOKEN_PATTERN = re.compile(r"[\w\u4e00-\u9fff]+")
-_NEGATION_TERMS = ("不", "不是", "不能", "不得", "禁止", "严禁", "not", "never", "disable")
 
 
 @dataclass(frozen=True)
@@ -54,8 +51,10 @@ class AutonomousGovernanceDecision:
     evidence_memory_ids: tuple[str, ...] = ()
     small_model_score: float | None = None
     llm_judge_score: float | None = None
-    model_outputs: dict[str, object] = field(default_factory=dict)
-    fallback_mode: str = "rule_only"
+    model_outputs: dict[str, object] = field(
+        default_factory=lambda: dict[str, object]()
+    )
+    fallback_mode: str = "llm_unavailable"
     rollback_payload: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -93,7 +92,7 @@ class AutonomousGovernanceEngine:
         include_p0: bool = True,
         include_p1: bool = True,
         model_mode: str = "auto",
-        rule_fallback: bool = True,
+        rule_fallback: bool = False,
         dry_run: bool = False,
         limit: int = 1000,
     ) -> dict[str, object]:
@@ -107,18 +106,6 @@ class AutonomousGovernanceEngine:
                 rule_fallback=rule_fallback,
                 steps=steps,
             )
-        if not rule_fallback and normalized_model_mode in {"auto", "rules"}:
-            steps["p0"] = {
-                "status": "skipped",
-                "reason": "rule_fallback_disabled_without_model_chain",
-            }
-            return _cycle_result(
-                dry_run=dry_run,
-                model_mode=normalized_model_mode,
-                rule_fallback=rule_fallback,
-                steps=steps,
-            )
-
         steps["cross_session_l3"] = self._run_cross_session_l3(
             embedding_model=embedding_model,
             threshold=l3_threshold,
@@ -286,26 +273,22 @@ class AutonomousGovernanceEngine:
                     target_id=candidate.edge_id,
                     action_type="merge_duplicate",
                     risk_tier="P0",
-                    decision=(
-                        "execute"
-                        if candidate.similarity >= auto_merge_threshold
-                        else "defer"
-                    ),
-                    confidence=min(1.0, candidate.similarity),
+                    decision=str(evaluation["decision"]),
+                    confidence=_optional_float(evaluation.get("llm_judge_score")) or 0.0,
                     rule_score=min(1.0, candidate.similarity),
                     reasons=(
                         "embedding_similarity:%0.4f" % candidate.similarity,
-                        "rule_fallback_semantic_dedup",
+                        "llm_judge_required",
                     ),
                     evidence_memory_ids=(
                         candidate.source_memory_id,
                         candidate.target_memory_id,
                     ),
                     model_mode=model_mode,
-                    fallback_mode=evaluation["fallback_mode"],
+                    fallback_mode=_text_value(evaluation.get("fallback_mode")),
                     small_model_score=_optional_float(evaluation.get("small_model_score")),
                     llm_judge_score=_optional_float(evaluation.get("llm_judge_score")),
-                    model_outputs=dict(evaluation["model_outputs"]),
+                    model_outputs=_object_dict(evaluation.get("model_outputs")),
                     rollback_payload={
                         "edge_id": candidate.edge_id,
                         "rollback_method": "restore_semantic_l2_merge",
@@ -313,8 +296,15 @@ class AutonomousGovernanceEngine:
                 )
             )
         self._log_decisions(decisions, dry_run=dry_run)
+        executable_edge_ids = {
+            decision.target_id for decision in decisions if decision.decision == "execute"
+        }
         resolutions = deduper.auto_resolve_candidates(
-            candidates,
+            [
+                candidate
+                for candidate in candidates
+                if candidate.edge_id in executable_edge_ids
+            ],
             auto_merge=True,
             auto_tombstone=True,
             dry_run=dry_run,
@@ -399,17 +389,17 @@ class AutonomousGovernanceEngine:
             evaluation = _evaluate_action(
                 action_type="materialize_l3_scene",
                 texts=[str(candidate["source_summary"]), str(candidate["target_summary"])],
-                rule_score=float(candidate["similarity"]),
+                rule_score=_float_value(candidate.get("similarity")),
                 model_mode=model_mode,
             )
             decision = _decision(
                 target_type="graph_edge",
-                target_id=candidate["edge_id"],
+                target_id=_text_value(candidate.get("edge_id")),
                 action_type="materialize_l3_scene",
                 risk_tier="P0",
-                decision="execute",
-                confidence=float(candidate["similarity"]),
-                rule_score=float(candidate["similarity"]),
+                decision=str(evaluation["decision"]),
+                confidence=_optional_float(evaluation.get("llm_judge_score")) or 0.0,
+                rule_score=_float_value(candidate.get("similarity")),
                 reasons=(
                     "cross_session_similarity:%0.4f" % candidate["similarity"],
                     "same_atom_type:%s" % candidate["atom_type"],
@@ -420,10 +410,10 @@ class AutonomousGovernanceEngine:
                     str(candidate["target_memory_id"]),
                 ),
                 model_mode=model_mode,
-                fallback_mode=evaluation["fallback_mode"],
+                fallback_mode=_text_value(evaluation.get("fallback_mode")),
                 small_model_score=_optional_float(evaluation.get("small_model_score")),
                 llm_judge_score=_optional_float(evaluation.get("llm_judge_score")),
-                model_outputs=dict(evaluation["model_outputs"]),
+                model_outputs=_object_dict(evaluation.get("model_outputs")),
                 rollback_payload={
                     "edge_id": candidate["edge_id"],
                     "rollback_target": "created_l3_memory",
@@ -431,7 +421,16 @@ class AutonomousGovernanceEngine:
             )
             decisions.append(decision)
             self._log_decision(decision, dry_run=dry_run)
-            if dry_run:
+            if dry_run or decision.decision != "execute":
+                self._log_applied_decision(
+                    decision=decision,
+                    target_type="graph_edge",
+                    target_id=str(candidate["edge_id"]),
+                    action_type="materialize_l3_scene",
+                    applied=False,
+                    dry_run=dry_run,
+                    metadata={"reason": "governance_decision_%s" % decision.decision},
+                )
                 continue
             scene = _materialize_l3_scene(self.store, candidate)
             if scene is not None:
@@ -481,22 +480,22 @@ class AutonomousGovernanceEngine:
                 target_id=candidate.id,
                 action_type="activate_l4_persona",
                 risk_tier="P0",
-                decision="execute",
-                confidence=float(candidate.metadata.get("autonomous_confidence", 0.8)),
+                decision=str(evaluation["decision"]),
+                confidence=_optional_float(evaluation.get("llm_judge_score")) or 0.0,
                 rule_score=float(candidate.metadata.get("autonomous_confidence", 0.8)),
                 reasons=(
                     "support_count:%s" % candidate.metadata.get("support_count"),
                     "persona_atom_type:%s" % candidate.metadata.get("atom_type"),
-                    "rule_fallback_persona",
+                    "llm_judge_required",
                 ),
-                evidence_memory_ids=tuple(
-                    str(value) for value in candidate.metadata.get("source_memory_ids", [])
+                evidence_memory_ids=_string_tuple(
+                    candidate.metadata.get("source_memory_ids")
                 ),
                 model_mode=model_mode,
-                fallback_mode=evaluation["fallback_mode"],
+                fallback_mode=_text_value(evaluation.get("fallback_mode")),
                 small_model_score=_optional_float(evaluation.get("small_model_score")),
                 llm_judge_score=_optional_float(evaluation.get("llm_judge_score")),
-                model_outputs=dict(evaluation["model_outputs"]),
+                model_outputs=_object_dict(evaluation.get("model_outputs")),
                 rollback_payload={
                     "memory_id": candidate.id,
                     "rollback_target": "created_l4_memory",
@@ -504,7 +503,16 @@ class AutonomousGovernanceEngine:
             )
             decisions.append(decision)
             self._log_decision(decision, dry_run=dry_run)
-            if dry_run:
+            if dry_run or decision.decision != "execute":
+                self._log_applied_decision(
+                    decision=decision,
+                    target_type="memory_unit",
+                    target_id=candidate.id,
+                    action_type="activate_l4_persona",
+                    applied=False,
+                    dry_run=dry_run,
+                    metadata={"reason": "governance_decision_%s" % decision.decision},
+                )
                 continue
             self.store.put_memory_unit(candidate)
             applied_memory_ids.append(candidate.id)
@@ -581,7 +589,7 @@ class AutonomousGovernanceEngine:
                 {
                     "policy_version": AUTONOMOUS_POLICY_VERSION,
                     "action_type": action_type,
-                    "fallback_mode": "rule_only",
+                    "fallback_mode": "not_evaluated",
                 }
             )
         self.store.append_review_event(
@@ -613,7 +621,7 @@ class AutonomousGovernanceEngine:
                 "action_type": action_type,
                 "reason": reason,
                 "model_mode": model_mode,
-                "fallback_mode": "rule_only",
+                "fallback_mode": "not_applicable",
             },
         )
 
@@ -632,7 +640,7 @@ class AutonomousGovernanceEngine:
                 "policy_version": AUTONOMOUS_POLICY_VERSION,
                 "action_type": action_type,
                 "reason": reason,
-                "fallback_mode": "rule_only",
+                "fallback_mode": "not_applicable",
             }
         )
         self.store.append_review_event(
@@ -731,16 +739,23 @@ def _cycle_result(
     for name, step in steps.items():
         if not isinstance(step, dict):
             continue
-        summary["decision_count"] += int(step.get("decision_count", 0))
-        summary["applied_count"] += int(step.get("applied_count", 0))
-        if step.get("status") == "degraded":
+        step_data = _object_dict(cast(object, step))
+        summary["decision_count"] += _int_value(step_data.get("decision_count"))
+        summary["applied_count"] += _int_value(step_data.get("applied_count"))
+        if step_data.get("status") == "degraded":
             summary["degraded_count"] += 1
         if name == "semantic_dedup":
-            summary["semantic_applied_count"] = int(step.get("applied_count", 0))
+            summary["semantic_applied_count"] = _int_value(
+                step_data.get("applied_count")
+            )
         elif name == "cross_session_l3":
-            summary["cross_session_l3_applied_count"] = int(step.get("applied_count", 0))
+            summary["cross_session_l3_applied_count"] = _int_value(
+                step_data.get("applied_count")
+            )
         elif name == "l4_persona":
-            summary["l4_persona_applied_count"] = int(step.get("applied_count", 0))
+            summary["l4_persona_applied_count"] = _int_value(
+                step_data.get("applied_count")
+            )
     return {
         "status": "complete",
         "dry_run": dry_run,
@@ -754,7 +769,7 @@ def _cycle_result(
 
 def _model_mode(value: str) -> str:
     normalized = value.strip().lower()
-    if normalized not in {"auto", "rules", "llm", "off"}:
+    if normalized not in {"auto", "llm", "off"}:
         raise ValueError("Unsupported autonomous governance model_mode: %s" % value)
     return normalized
 
@@ -765,24 +780,30 @@ def _evaluate_action(
     rule_score: float,
     model_mode: str,
 ) -> dict[str, object]:
-    small_model = _small_model_evaluate(action_type=action_type, texts=texts, rule_score=rule_score)
+    small_model = {
+        "available": False,
+        "reason": "real_small_model_not_configured",
+    }
     llm_judge = {"available": False, "reason": "not_requested"}
     if model_mode in {"auto", "llm"}:
         llm_judge = _llm_judge_action(
             action_type=action_type,
             texts=texts,
             rule_score=rule_score,
-            small_model_score=float(small_model["score"]),
+            small_model_score=None,
         )
     if llm_judge.get("available") is True:
         fallback_mode = "none"
-    elif small_model.get("available") is True and model_mode != "rules":
-        fallback_mode = "small_model_only"
     else:
-        fallback_mode = "rule_only"
+        fallback_mode = "llm_unavailable"
     return {
+        "decision": (
+            str(llm_judge["decision"])
+            if llm_judge.get("available") is True
+            else "defer"
+        ),
         "fallback_mode": fallback_mode,
-        "small_model_score": small_model.get("score"),
+        "small_model_score": None,
         "llm_judge_score": llm_judge.get("score") if llm_judge.get("available") else None,
         "model_outputs": {
             "rule_gate": {"available": True, "score": rule_score},
@@ -793,46 +814,14 @@ def _evaluate_action(
     }
 
 
-def _small_model_evaluate(
-    action_type: str,
-    texts: Sequence[str],
-    rule_score: float,
-) -> dict[str, object]:
-    normalized_texts = [text for text in texts if text]
-    if len(normalized_texts) < 2:
-        score = min(1.0, max(0.0, rule_score + 0.05))
-        return {
-            "available": True,
-            "kind": "local_heuristic_small_model",
-            "score": score,
-            "signals": {"single_text": True, "action_type": action_type},
-        }
-    left_tokens = _tokens(normalized_texts[0])
-    right_tokens = _tokens(normalized_texts[1])
-    union = left_tokens | right_tokens
-    overlap = len(left_tokens & right_tokens) / len(union) if union else 0.0
-    negation_mismatch = _has_negation(normalized_texts[0]) != _has_negation(normalized_texts[1])
-    score = (rule_score * 0.65) + (overlap * 0.25) + (0.10 if not negation_mismatch else -0.20)
-    return {
-        "available": True,
-        "kind": "local_heuristic_small_model",
-        "score": min(1.0, max(0.0, score)),
-        "signals": {
-            "token_overlap": overlap,
-            "negation_mismatch": negation_mismatch,
-            "action_type": action_type,
-        },
-    }
-
-
 def _llm_judge_action(
     action_type: str,
     texts: Sequence[str],
     rule_score: float,
-    small_model_score: float,
+    small_model_score: float | None,
 ) -> dict[str, object]:
     try:
-        client = OpenAICompatibleClient(llm_config_from_env())
+        client = OpenAICompatibleClient(llm_config_from_env("governance"))
         result = client.chat_json(
             [
                 {
@@ -857,13 +846,19 @@ def _llm_judge_action(
             ]
         )
         score = _optional_float(result.get("score"))
+        decision = str(result.get("decision", "")).strip().lower()
+        if score is None or not 0.0 <= score <= 1.0:
+            raise ValueError("Governance judge requires score between 0 and 1")
+        if decision not in {"execute", "defer", "keep"}:
+            raise ValueError("Governance judge returned unsupported decision: %s" % decision)
         return {
             "available": True,
             "kind": "openai_compatible_llm_judge",
-            "score": score if score is not None else small_model_score,
+            "score": score,
+            "decision": decision,
             "raw": result,
         }
-    except Exception as exc:  # noqa: BLE001 - optional evaluator must not stop governance.
+    except Exception as exc:
         return {
             "available": False,
             "reason": "llm_unavailable:%s" % exc,
@@ -871,19 +866,37 @@ def _llm_judge_action(
         }
 
 
-def _tokens(text: str) -> set[str]:
-    return {match.group(0).lower() for match in _TOKEN_PATTERN.finditer(text)}
-
-
-def _has_negation(text: str) -> bool:
-    lowered = text.lower()
-    return any(term in lowered for term in _NEGATION_TERMS)
-
-
 def _optional_float(value: object) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     return None
+
+
+def _float_value(value: object) -> float:
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
+def _int_value(value: object) -> int:
+    return value if isinstance(value, int) else 0
+
+
+def _text_value(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _object_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): item
+        for key, item in cast(dict[object, object], value).items()
+    }
+
+
+def _string_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(str(item) for item in cast(list[object], value))
 
 
 def _cross_session_l3_candidates(
@@ -927,10 +940,14 @@ def _cross_session_l3_candidates(
             source, target = _stable_session_pair(left, right)
             edge_id = stable_id("graph_edge", source.id, target.id, CROSS_SESSION_L3_EDGE)
             existing_edge = store.get_graph_edge(edge_id)
+            existing_metadata = _object_dict(
+                existing_edge.get("metadata")
+                if existing_edge is not None
+                else None
+            )
             if (
                 existing_edge is not None
-                and isinstance(existing_edge.get("metadata"), dict)
-                and existing_edge["metadata"].get("autonomous_l3_memory_id")
+                and existing_metadata.get("autonomous_l3_memory_id")
             ):
                 continue
             candidates.append(
@@ -967,8 +984,8 @@ def _materialize_l3_scene(
         source_memory_id=source.id,
         target_memory_id=target.id,
         edge_type=CROSS_SESSION_L3_EDGE,
-        weight=float(candidate["similarity"]),
-        confidence=float(candidate["similarity"]),
+        weight=_float_value(candidate.get("similarity")),
+        confidence=_float_value(candidate.get("similarity")),
         metadata={
             "atom_type": candidate["atom_type"],
             "embedding_model": candidate["embedding_model"],
@@ -1009,9 +1026,13 @@ def _materialize_l3_scene(
     }
     content = json.dumps(content_data, ensure_ascii=False, sort_keys=True)
     now = utc_now_iso()
-    confidence = min(max(float(candidate["similarity"]), 0.0), 1.0)
+    confidence = min(
+        max(_float_value(candidate.get("similarity")), 0.0),
+        1.0,
+    )
     scene = MemoryUnit(
         id=scene_id,
+        scope=source.scope,
         layer=MemoryLayer.L3,
         lifecycle_state=LifecycleState.LONG,
         status=MemoryStatus.ACTIVE,
@@ -1105,6 +1126,7 @@ def _l4_persona_candidates(
         candidates.append(
             MemoryUnit(
                 id=persona_id,
+                scope=sorted_memories[0].scope,
                 layer=MemoryLayer.L4,
                 lifecycle_state=LifecycleState.PERMANENT,
                 status=MemoryStatus.ACTIVE,
@@ -1153,6 +1175,8 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     right_norm = sqrt(sum(float(value) * float(value) for value in right))
     if left_norm == 0 or right_norm == 0:
         return 0.0
-    return sum(float(lv) * float(rv) for lv, rv in zip(left, right)) / (
+    return sum(
+        float(lv) * float(rv) for lv, rv in zip(left, right, strict=True)
+    ) / (
         left_norm * right_norm
     )

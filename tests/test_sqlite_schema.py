@@ -1,9 +1,8 @@
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -47,6 +46,14 @@ class SQLiteSchemaTest(unittest.TestCase):
             self.assertIn("review_events", tables)
             self.assertIn("review_audit_projections", tables)
             self.assertIn("checkpoints", tables)
+            self.assertIn("runtime_cycles", tables)
+            self.assertIn("runtime_jobs", tables)
+            self.assertIn("l3_scenes", tables)
+            self.assertIn("l4_persona_facets", tables)
+            self.assertIn("vector_index_registry", tables)
+            self.assertIn("lifecycle_age_stats", tables)
+            self.assertIn("deletion_requests", tables)
+            self.assertIn("ccr_entries", tables)
             self.assertIn("tombstones", tables)
             self.assertIn("l2_preferences", tables)
             self.assertIn("l2_constraints", tables)
@@ -65,6 +72,76 @@ class SQLiteSchemaTest(unittest.TestCase):
 
             self.assertIn("promotion_candidate_since", memory_unit_columns)
             self.assertIn("demotion_candidate_since", memory_unit_columns)
+            self.assertTrue(
+                {
+                    "tenant_id",
+                    "workspace_id",
+                    "user_id",
+                    "agent_id",
+                    "visibility",
+                }
+                <= memory_unit_columns
+            )
+
+    def test_initialize_migrates_legacy_memory_scope_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "legacy.sqlite3"
+            with sqlite3.connect(db_path) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE memory_units (
+                      id TEXT PRIMARY KEY,
+                      layer TEXT NOT NULL,
+                      lifecycle_state TEXT NOT NULL,
+                      status TEXT NOT NULL,
+                      content TEXT NOT NULL,
+                      content_hash TEXT NOT NULL,
+                      summary TEXT,
+                      created_at TEXT NOT NULL,
+                      updated_at TEXT NOT NULL,
+                      last_accessed_at TEXT,
+                      access_count INTEGER NOT NULL DEFAULT 0,
+                      useful_access_count INTEGER NOT NULL DEFAULT 0,
+                      resident_score REAL NOT NULL DEFAULT 0,
+                      structural_score REAL NOT NULL DEFAULT 0,
+                      recency_score REAL NOT NULL DEFAULT 0,
+                      access_score REAL NOT NULL DEFAULT 0,
+                      evidence_quality_score REAL NOT NULL DEFAULT 0,
+                      lifecycle_age INTEGER NOT NULL DEFAULT 0,
+                      protection_tier INTEGER NOT NULL DEFAULT 1,
+                      compression_tier INTEGER NOT NULL DEFAULT 0,
+                      observation_until TEXT,
+                      metadata_json TEXT NOT NULL DEFAULT '{}'
+                    )
+                    """
+                )
+                connection.commit()
+
+            SQLiteMemoryStore(db_path).initialize()
+
+            with sqlite3.connect(db_path) as connection:
+                columns = {
+                    row[1] for row in connection.execute("PRAGMA table_info(memory_units)")
+                }
+                tables = {
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'table'"
+                    )
+                }
+            self.assertTrue(
+                {
+                    "tenant_id",
+                    "workspace_id",
+                    "user_id",
+                    "agent_id",
+                    "visibility",
+                    "promotion_candidate_since",
+                    "demotion_candidate_since",
+                }
+                <= columns
+            )
+            self.assertTrue({"runtime_cycles", "runtime_jobs"} <= tables)
 
     def test_put_memory_unit_empty_evidence_refs_clears_existing_refs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

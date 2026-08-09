@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Create virtual environment
+        run: python -m venv .venv
+      - name: Install
+        run: .venv/bin/python -m pip install -e ".[dev,mcp]" build
+      - name: Compile
+        run: .venv/bin/python -m compileall -q src tests adapters/hermes
+      - name: Lint
+        run: .venv/bin/ruff check src tests adapters/hermes
+      - name: Strict type check
+        run: .venv/bin/pyright
+      - name: Test
+        run: .venv/bin/python -m unittest discover -s tests
+      - name: Validate schema
+        run: 'sqlite3 :memory: < schemas/sqlite/001_initial.sql'
+      - name: Build distributions
+        if: matrix.python-version == '3.11'
+        run: .venv/bin/python -m build
+      - name: Installed wheel smoke test
+        if: matrix.python-version == '3.11'
+        run: |
+          .venv/bin/python -m venv /tmp/altm-wheel
+          /tmp/altm-wheel/bin/pip install "dist/altm-"*.whl
+          /tmp/altm-wheel/bin/altm init-db --db /tmp/altm-installed.sqlite3
+
+  typescript-sdk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: adapters/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: adapters/typescript/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build

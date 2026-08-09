@@ -13,9 +13,9 @@ from altm.governance.autonomous import (
 from altm.governance.semantic_dedup import (
     SEMANTIC_DEDUP_MODES,
     SemanticDedupCandidate,
+    SemanticDeduper,
     SemanticDedupPolicy,
     SemanticDedupResolution,
-    SemanticDeduper,
 )
 
 __all__ = [
@@ -25,9 +25,9 @@ __all__ = [
     "AUTONOMOUS_EVENT_EVALUATED",
     "AUTONOMOUS_EVENT_ROLLED_BACK",
     "AUTONOMOUS_POLICY_VERSION",
+    "SEMANTIC_DEDUP_MODES",
     "AutonomousGovernanceDecision",
     "AutonomousGovernanceEngine",
-    "SEMANTIC_DEDUP_MODES",
     "SemanticDedupCandidate",
     "SemanticDedupPolicy",
     "SemanticDedupResolution",

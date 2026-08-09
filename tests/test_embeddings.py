@@ -1,13 +1,12 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
-from pathlib import Path
 import sys
 import tempfile
 import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -34,7 +33,7 @@ class FakeEmbeddingHandler(BaseHTTPRequestHandler):
     last_path: str | None = None
     last_authorization: str | None = None
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
         inputs = payload["input"]
@@ -149,6 +148,45 @@ class EmbeddingIntegrationTest(unittest.TestCase):
             self.assertGreaterEqual(len(recalled), 1)
             self.assertEqual(recalled[0].memory.id, "semantic")
             self.assertIn("remote_vector", recalled[0].matched_by)
+
+    def test_sqlite_vec_index_serves_search_without_json_vector_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
+            store.initialize()
+            memory = _memory("vec-indexed", "sqlite vec indexed memory")
+            store.put_memory_unit(memory)
+            store.put_memory_embedding(
+                memory.id,
+                "test-embedding",
+                memory.content_hash,
+                [1.0, 0.0, 0.0],
+            )
+            with store.connect() as connection:
+                registry = connection.execute(
+                    """
+                    SELECT table_name, dimension, backend
+                    FROM vector_index_registry
+                    WHERE embedding_model = 'test-embedding'
+                    """
+                ).fetchone()
+                connection.execute(
+                    """
+                    DELETE FROM memory_embeddings
+                    WHERE embedding_model = 'test-embedding'
+                    """
+                )
+                connection.commit()
+
+            recalled = store.search_embeddings(
+                query_vector=[1.0, 0.0, 0.0],
+                embedding_model="test-embedding",
+                limit=5,
+            )
+
+            self.assertIsNotNone(registry)
+            self.assertEqual(registry["dimension"], 3)
+            self.assertEqual(registry["backend"], "sqlite-vec")
+            self.assertEqual([memory.id for memory, _ in recalled], ["vec-indexed"])
 
     def test_remote_embedding_failure_falls_back_to_local_retrieval(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

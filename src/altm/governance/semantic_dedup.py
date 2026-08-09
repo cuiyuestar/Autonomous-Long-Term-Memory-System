@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
-from math import sqrt
 import re
-from typing import Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from math import sqrt
+from typing import cast
 
-from altm.contracts import MemoryLayer, MemoryStatus, MemoryUnit
 from altm.config import high_risk_flags
+from altm.contracts import MemoryLayer, MemoryStatus, MemoryUnit
 from altm.storage import SQLiteMemoryStore
 from altm.utils import stable_id, utc_now_iso
-
 
 SEMANTIC_DEDUP_MODES = {"auto", "mark-only", "auto-merge", "auto-tombstone"}
 _TERMINAL_EDGE_RESOLUTION_STATUSES = {"auto_merged", "manual_merged", "rolled_back"}
@@ -56,7 +56,9 @@ class SemanticDedupCandidate:
     similarity: float
     atom_type: str
     edge_id: str
-    edge_metadata: dict[str, object] = field(default_factory=dict)
+    edge_metadata: dict[str, object] = field(
+        default_factory=lambda: dict[str, object]()
+    )
 
 
 @dataclass(frozen=True)
@@ -68,7 +70,9 @@ class SemanticDedupResolution:
     tombstoned: bool
     reason: str
     dry_run: bool = False
-    details: dict[str, object] = field(default_factory=dict)
+    details: dict[str, object] = field(
+        default_factory=lambda: dict[str, object]()
+    )
 
 
 class SemanticDeduper:
@@ -115,7 +119,7 @@ class SemanticDeduper:
                     continue
                 source, target = _stable_pair_order(left, right)
                 edge_id = stable_id("graph_edge", source.id, target.id, self.policy.edge_type)
-                edge_metadata = {
+                edge_metadata: dict[str, object] = {
                     "atom_type": source.metadata.get("atom_type"),
                     "embedding_model": embedding_model,
                     "similarity": similarity,
@@ -134,7 +138,11 @@ class SemanticDeduper:
                         metadata=edge_metadata,
                     )
                     edge = self.store.get_graph_edge(edge_id)
-                    edge_metadata = dict(edge["metadata"]) if edge is not None else edge_metadata
+                    edge_metadata = (
+                        _object_dict(edge.get("metadata"))
+                        if edge is not None
+                        else edge_metadata
+                    )
                     if before is None and high_risk_flags().enable_review_event_sourcing:
                         self.store.append_review_event(
                             event_type="semantic_duplicate_marked",
@@ -280,7 +288,7 @@ class SemanticDeduper:
                         duplicate_memory_id=duplicate.id,
                         merged=False,
                         tombstoned=False,
-                        reason=guard["reason"],
+                        reason=str(guard["reason"]),
                         details=guard,
                     )
                 )
@@ -340,7 +348,11 @@ class SemanticDeduper:
         if dry_run:
             return dict(candidate.edge_metadata)
         edge = self.store.get_graph_edge(candidate.edge_id)
-        return dict(edge["metadata"]) if edge is not None else dict(candidate.edge_metadata)
+        return (
+            _object_dict(edge.get("metadata"))
+            if edge is not None
+            else dict(candidate.edge_metadata)
+        )
 
     def _root_memory(self, memory_id: str) -> MemoryUnit | None:
         current = self.store.get_memory_unit(memory_id)
@@ -402,13 +414,6 @@ def _stable_pair_order(left: MemoryUnit, right: MemoryUnit) -> tuple[MemoryUnit,
     left_key = (left.created_at, left.id)
     right_key = (right.created_at, right.id)
     return (left, right) if left_key <= right_key else (right, left)
-
-
-def _append_unique(value: object, item: str) -> list[str]:
-    values = [str(existing) for existing in value] if isinstance(value, list) else []
-    if item not in values:
-        values.append(item)
-    return values
 
 
 def _edge_auto_resolution_blocker(metadata: dict[str, object]) -> str | None:
@@ -522,13 +527,22 @@ def _l2_semantic_fields(memory: MemoryUnit) -> dict[str, object]:
     except json.JSONDecodeError:
         content = {}
     if isinstance(content, dict):
-        fields.update(content)
+        fields.update(_object_dict(cast(object, content)))
     for key in ("atom_type", "subject", "predicate", "object", "scope", "confidence"):
         if key in memory.metadata and key not in fields:
             fields[key] = memory.metadata[key]
     if "text" not in fields and memory.summary is not None:
         fields["text"] = memory.summary
     return fields
+
+
+def _object_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): item
+        for key, item in cast(dict[object, object], value).items()
+    }
 
 
 def _text_for_guard(fields: dict[str, object], memory: MemoryUnit) -> str:
@@ -571,5 +585,8 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     right_norm = sqrt(sum(float(value) * float(value) for value in right))
     if left_norm == 0 or right_norm == 0:
         return 0.0
-    dot = sum(float(left_value) * float(right_value) for left_value, right_value in zip(left, right))
+    dot = sum(
+        float(left_value) * float(right_value)
+        for left_value, right_value in zip(left, right, strict=True)
+    )
     return dot / (left_norm * right_norm)

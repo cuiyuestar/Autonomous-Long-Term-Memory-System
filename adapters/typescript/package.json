@@ -1,19 +1,41 @@
 {
-  "name": "@altm/adapter-contracts",
-  "version": "0.1.0",
-  "private": true,
-  "description": "TypeScript adapter contract declarations for ALTM (Autonomous Long-Term Memory)",
+  "name": "@altm/sdk",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Typed MCP SDK for the ALTM autonomous long-term memory runtime",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System.git",
+    "directory": "adapters/typescript"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }

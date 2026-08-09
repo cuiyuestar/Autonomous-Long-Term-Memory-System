@@ -1,8 +1,9 @@
-"""Human-in-loop review queue for memory governance candidates."""
+"""Legacy/debug review queue outside the autonomous runtime governance path."""
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
+from typing import cast
 
 from altm.config import high_risk_flags
 from altm.contracts import (
@@ -231,9 +232,9 @@ class ReviewQueue:
                     kind=ReviewItemKind.L4_PERSONA_CANDIDATE,
                     review_status=status,
                     title="Review L4 persona candidate",
-                    source_memory_ids=[
-                        str(value) for value in memory.metadata.get("source_memory_ids", [])
-                    ],
+                    source_memory_ids=_string_list(
+                        memory.metadata.get("source_memory_ids")
+                    ),
                 )
             )
         return items
@@ -241,8 +242,8 @@ class ReviewQueue:
     def _semantic_duplicate_items(self, include_reviewed: bool) -> Sequence[ReviewQueueItem]:
         items: list[ReviewQueueItem] = []
         for edge in self.store.list_graph_edges("semantic_duplicate_candidate"):
-            metadata = edge.get("metadata", {})
-            status = _review_status(metadata.get("review_status") if isinstance(metadata, dict) else None)
+            metadata = _object_dict(edge.get("metadata"))
+            status = _review_status(metadata.get("review_status"))
             if not include_reviewed and status != ReviewStatus.PENDING:
                 continue
             items.append(self._edge_to_review_item(edge, review_status=status))
@@ -251,8 +252,8 @@ class ReviewQueue:
     def _cross_session_l3_items(self, include_reviewed: bool) -> Sequence[ReviewQueueItem]:
         items: list[ReviewQueueItem] = []
         for edge in self.store.list_graph_edges("cross_session_l3_candidate"):
-            metadata = edge.get("metadata", {})
-            status = _review_status(metadata.get("review_status") if isinstance(metadata, dict) else None)
+            metadata = _object_dict(edge.get("metadata"))
+            status = _review_status(metadata.get("review_status"))
             if not include_reviewed and status != ReviewStatus.PENDING:
                 continue
             items.append(
@@ -297,8 +298,7 @@ class ReviewQueue:
         kind: ReviewItemKind = ReviewItemKind.SEMANTIC_DUPLICATE_CANDIDATE,
         title: str = "Review semantic duplicate candidate",
     ) -> ReviewQueueItem:
-        metadata = edge.get("metadata", {})
-        metadata_dict = dict(metadata) if isinstance(metadata, dict) else {}
+        metadata_dict = _object_dict(edge.get("metadata"))
         source_memory_id = str(edge["source_memory_id"])
         target_memory_id = str(edge["target_memory_id"])
         similarity = metadata_dict.get("similarity", edge.get("weight"))
@@ -322,6 +322,21 @@ def _review_status(value: object) -> ReviewStatus:
         except ValueError:
             return ReviewStatus.PENDING
     return ReviewStatus.PENDING
+
+
+def _object_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): item
+        for key, item in cast(dict[object, object], value).items()
+    }
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in cast(list[object], value)]
 
 
 def _append_review_event_if_enabled(

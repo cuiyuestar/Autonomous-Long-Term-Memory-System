@@ -7,13 +7,21 @@ jieba tokens, ASCII words, and character n-grams.
 
 from __future__ import annotations
 
-from collections import Counter
 import math
 import re
-from typing import Iterable, Sequence
+from collections import Counter
+from collections.abc import Iterable, Sequence
+from importlib import import_module
+from typing import Protocol, cast
 
 from altm.contracts import MemoryLayer, MemoryStatus, MemoryUnit
 from altm.storage import SQLiteMemoryStore
+
+
+class _JiebaModule(Protocol):
+    def setLogLevel(self, level: int) -> None: ...  # noqa: N802
+
+    def cut(self, text: str) -> Iterable[str]: ...
 
 
 def tokenize_for_local_vector(text: str) -> list[str]:
@@ -23,8 +31,7 @@ def tokenize_for_local_vector(text: str) -> list[str]:
     chinese_chars = re.findall(r"[\u4e00-\u9fff]", text)
 
     try:
-        import jieba  # type: ignore
-
+        jieba = cast(_JiebaModule, import_module("jieba"))
         jieba.setLogLevel(30)
         tokens.extend(token for token in jieba.cut(text) if len(token.strip()) >= 2)
     except Exception:

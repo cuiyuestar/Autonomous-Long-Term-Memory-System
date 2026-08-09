@@ -1,12 +1,11 @@
-from contextlib import redirect_stdout
 import io
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -139,7 +138,7 @@ class ApplicationUseCaseTest(unittest.TestCase):
             self.assertNotIn("active_window_mode", bundle.metadata)
             self.assertNotIn("active-only", {item.source_memory_ids[0] for item in bundle.items})
 
-    def test_build_context_records_injected_feedback_for_active_window_items(self) -> None:
+    def test_build_context_defers_feedback_until_prepare_turn(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "memory.sqlite3"
             store = SQLiteMemoryStore(db_path)
@@ -163,8 +162,8 @@ class ApplicationUseCaseTest(unittest.TestCase):
 
             updated = SQLiteMemoryStore(db_path).get_memory_unit("active-only")
             self.assertIsNotNone(updated)
-            self.assertEqual(bundle.metadata["active_window_feedback_memory_ids"], ["active-only"])
-            self.assertEqual(updated.access_count, 1)
+            self.assertEqual(bundle.metadata["active_window_feedback_memory_ids"], [])
+            self.assertEqual(updated.access_count, 0)
             self.assertEqual(updated.useful_access_count, 0)
 
     def test_active_window_l4_persona_can_be_disabled_by_flag(self) -> None:
@@ -189,6 +188,74 @@ class ApplicationUseCaseTest(unittest.TestCase):
                 bundle = AltmApplication(db_path).active_window(limit=5, layers=["L4"])
 
             self.assertEqual(bundle.items, [])
+
+    def test_runtime_cycle_runs_mvp_loop_with_degraded_l2_extraction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            app = AltmApplication(db_path)
+
+            with patch.dict("os.environ", {}, clear=True):
+                result = app.runtime_cycle(
+                    session_id="mvp",
+                    content="我们决定使用 SQLite 作为 MVP 本地记忆存储。",
+                    token_budget=300,
+                    recall_limit=5,
+                    run_maintenance=True,
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertEqual(result["steps"]["capture_l0"]["status"], "applied")
+            self.assertEqual(result["steps"]["fold_l1"]["status"], "degraded")
+            self.assertEqual(result["steps"]["extract_l2"]["status"], "degraded")
+            self.assertEqual(result["steps"]["maintenance_cycle"]["status"], "applied")
+            self.assertGreaterEqual(result["summary"]["context_included_count"], 1)
+            self.assertGreaterEqual(len(result["context"]["items"]), 1)
+
+    def test_runtime_session_cycle_processes_multiple_messages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            app = AltmApplication(db_path)
+
+            with patch.dict("os.environ", {}, clear=True):
+                result = app.runtime_session_cycle(
+                    session_id="mvp-session",
+                    messages=[
+                        {"role": "user", "content": "我们决定采用 SQLite。"},
+                        {"role": "assistant", "content": "记录为 MVP 本地存储决策。"},
+                    ],
+                    token_budget=300,
+                    run_maintenance=False,
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertEqual(result["message_count"], 2)
+            self.assertEqual(result["captured_count"], 2)
+            self.assertEqual(result["steps"]["fold_l1"]["status"], "degraded")
+            self.assertEqual(result["steps"]["extract_l2"]["status"], "degraded")
+            self.assertGreaterEqual(result["summary"]["context_included_count"], 1)
+
+    def test_mvp_chat_persists_assistant_turn_and_feedback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            app = AltmApplication(db_path)
+
+            with patch.dict("os.environ", {}, clear=True):
+                result = app.mvp_chat(
+                    session_id="mvp-chat",
+                    content="我们决定让 Phase 8 优先跑通交互式记忆闭环。",
+                    token_budget=300,
+                    run_maintenance=False,
+                    assistant_content="已基于 memory://turn 记录本轮 Phase 8 闭环目标。",
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertTrue(result["deprecated"])
+            self.assertEqual(result["committed_turn"]["status"], "committed")
+            self.assertEqual(result["assistant_response"]["cited_memory_ids"], [])
+
+            store = SQLiteMemoryStore(db_path)
+            l0_units = store.list_l0_by_session("mvp-chat")
+            self.assertEqual([unit.metadata["role"] for unit in l0_units], ["user", "assistant"])
 
     def test_maintenance_cycle_runs_non_embedding_steps_when_model_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -217,10 +284,10 @@ class ApplicationUseCaseTest(unittest.TestCase):
             self.assertEqual(result["steps"]["semantic_dedup"]["status"], "skipped")
             self.assertEqual(result["steps"]["cross_session_l3_candidates"]["status"], "skipped")
             self.assertEqual(result["steps"]["build_l4_persona_candidates"]["status"], "skipped")
-            self.assertEqual(result["summary"]["autonomous_l4_applied_count"], 1)
+            self.assertEqual(result["summary"]["autonomous_l4_applied_count"], 0)
             self.assertEqual(
                 len(SQLiteMemoryStore(db_path).list_memory_units(layer=MemoryLayer.L4)),
-                1,
+                0,
             )
 
     def test_maintenance_cycle_can_still_run_legacy_review_actions_as_compat_path(self) -> None:
@@ -390,22 +457,126 @@ class ApplicationUseCaseTest(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertEqual(payload[0]["memory"]["id"], "cli-alpha")
 
+    def test_cli_runtime_cycle_outputs_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            output = io.StringIO()
+
+            with patch.dict("os.environ", {}, clear=True), redirect_stdout(output):
+                exit_code = cli_main(
+                    [
+                        "runtime-cycle",
+                        "--db",
+                        str(db_path),
+                        "--session-id",
+                        "mvp",
+                        "--content",
+                        "MVP runtime cycle should build usable context.",
+                        "--skip-maintenance",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["status"], "complete")
+            self.assertGreaterEqual(payload["summary"]["context_included_count"], 1)
+
+    def test_cli_runtime_session_cycle_outputs_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            output = io.StringIO()
+
+            with patch.dict("os.environ", {}, clear=True), redirect_stdout(output):
+                exit_code = cli_main(
+                    [
+                        "runtime-session-cycle",
+                        "--db",
+                        str(db_path),
+                        "--session-id",
+                        "mvp-session",
+                        "--message",
+                        "user:我们决定采用 SQLite。",
+                        "--message",
+                        "assistant:记录为 MVP 本地存储决策。",
+                        "--skip-maintenance",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["captured_count"], 2)
+            self.assertGreaterEqual(payload["summary"]["context_included_count"], 1)
+
+    def test_cli_mvp_chat_outputs_assistant_response(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            output = io.StringIO()
+
+            with patch.dict("os.environ", {}, clear=True), redirect_stdout(output):
+                exit_code = cli_main(
+                    [
+                        "mvp-chat",
+                        "--db",
+                        str(db_path),
+                        "--tenant-id",
+                        "local",
+                        "--workspace-id",
+                        "default",
+                        "--user-id",
+                        "default",
+                        "--agent-id",
+                        "default",
+                        "--session-id",
+                        "mvp-chat",
+                        "--content",
+                        "Phase 8 should provide an interactive memory loop.",
+                        "--assistant-content",
+                        "已记录 Phase 8 交互式记忆闭环。",
+                        "--skip-maintenance",
+                    ]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(payload["status"], "complete")
+            self.assertIn("assistant_response", payload)
+            self.assertEqual(payload["committed_turn"]["status"], "committed")
+
+    def test_cli_mvp_chat_rejects_synthetic_repl_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            stderr = io.StringIO()
+
+            with (
+                patch.dict("os.environ", {}, clear=True),
+                redirect_stderr(stderr),
+                self.assertRaises(SystemExit),
+            ):
+                    cli_main(
+                        [
+                            "mvp-chat",
+                            "--db",
+                            str(db_path),
+                            "--session-id",
+                            "mvp-chat-repl",
+                        ]
+                    )
+
     def test_cli_maintenance_cycle_can_skip_review_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "memory.sqlite3"
             SQLiteMemoryStore(db_path).initialize()
             output = io.StringIO()
 
-            with patch.dict("os.environ", {}, clear=True):
-                with redirect_stdout(output):
-                    exit_code = cli_main(
-                        [
-                            "maintenance-cycle",
-                            "--db",
-                            str(db_path),
-                            "--skip-review-actions",
-                        ]
-                    )
+            with patch.dict("os.environ", {}, clear=True), redirect_stdout(output):
+                exit_code = cli_main(
+                    [
+                        "maintenance-cycle",
+                        "--db",
+                        str(db_path),
+                        "--skip-review-actions",
+                    ]
+                )
 
             payload = json.loads(output.getvalue())
             self.assertEqual(exit_code, 0)

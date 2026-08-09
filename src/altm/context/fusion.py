@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Sequence
+from collections.abc import Sequence
 
 from altm.context.gateway import SimpleContextGateway
 from altm.contracts import (

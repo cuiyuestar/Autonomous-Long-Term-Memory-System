@@ -9,6 +9,17 @@ export type MemoryStatus =
   | "tombstoned"
   | "deleted";
 
+export type MemoryVisibility = "agent" | "user_workspace";
+
+export type SceneType =
+  | "project"
+  | "task"
+  | "topic"
+  | "relationship"
+  | "workflow";
+
+export type PersonaStatus = "observing" | "active" | "superseded";
+
 export type EvidenceRelation =
   | "source"
   | "derived_from"
@@ -39,6 +50,13 @@ export type L2AtomType =
   | "lesson";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export interface MemoryScope {
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+  agentId: string;
+}
 
 export interface FallbackLocator {
   sessionId?: string;
@@ -80,6 +98,8 @@ export interface LifecycleMeta {
 
 export interface MemoryUnit {
   id: string;
+  scope: MemoryScope;
+  visibility: MemoryVisibility;
   layer: MemoryLayer;
   lifecycleState: LifecycleState;
   status: MemoryStatus;
@@ -159,6 +179,7 @@ export interface RecallCandidate {
   score: ScoreBreakdown;
   matchedBy: string[];
   explanation?: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface ContextItem {
@@ -172,5 +193,106 @@ export interface ContextItem {
 export interface ContextBundle {
   items: ContextItem[];
   tokenBudget?: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface PrepareTurnInput {
+  scope: MemoryScope;
+  sessionId: string;
+  turnId: string;
+  content: string;
+  messageId?: string;
+  query?: string;
+  tokenBudget?: number;
+  recallLimit?: number;
+  activeWindowMode?: string;
+  activeLimit?: number;
+  strictSession?: boolean;
+}
+
+export interface PreparedTurn {
+  cycleId: string;
+  scope: MemoryScope;
+  sessionId: string;
+  turnId: string;
+  userMemoryId: string;
+  query: string;
+  context: ContextBundle;
+  enqueuedJobIds: string[];
+  status: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface CommitTurnInput {
+  scope: MemoryScope;
+  cycleId: string;
+  assistantContent: string;
+  citedMemoryIds?: string[];
+  assistantMessageId?: string;
+}
+
+export interface CommittedTurn {
+  cycleId: string;
+  scope: MemoryScope;
+  sessionId: string;
+  turnId: string;
+  assistantMemoryId: string;
+  citedMemoryIds: string[];
+  enqueuedJobIds: string[];
+  status: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SceneBlock {
+  id: string;
+  title: string;
+  sceneType: SceneType;
+  summary: string;
+  activeFacts: string[];
+  historicalFacts: string[];
+  openQuestions: string[];
+  knownRisks: string[];
+  sourceMemoryIds: string[];
+  sourceSessionIds: string[];
+  confidence: number;
+  boundaryRisk: number;
+  observationCycles: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface PersonaFacet {
+  id: string;
+  facetKey: string;
+  facetType: string;
+  statement: string;
+  workspaceScope: string;
+  confidence: number;
+  stabilityScore: number;
+  status: PersonaStatus;
+  sourceMemoryIds: string[];
+  sourceAgentIds: string[];
+  counterEvidenceMemoryIds: string[];
+  firstObservedAt: string;
+  lastObservedAt: string;
+  observationCycles: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface SemanticEvaluation {
+  evaluator: string;
+  task: string;
+  label: string;
+  score: number;
+  reason: string;
+  model?: string;
+  evidenceMemoryIds: string[];
+  output: Record<string, unknown>;
+}
+
+export interface SemanticGateResult {
+  decision: string;
+  confidence: number;
+  reason: string;
+  evaluations: SemanticEvaluation[];
   metadata: Record<string, unknown>;
 }

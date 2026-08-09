@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import sqrt
-from typing import Sequence
 
 from altm.contracts import (
     EvidenceRef,
@@ -87,6 +87,7 @@ class RuleBasedL3SceneBuilder:
         now = utc_now_iso()
         return MemoryUnit(
             id=scene_id,
+            scope=sorted_memories[0].scope,
             layer=MemoryLayer.L3,
             lifecycle_state=LifecycleState.SHORT,
             status=MemoryStatus.OBSERVING,
@@ -225,5 +226,8 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     right_norm = sqrt(sum(float(value) * float(value) for value in right))
     if left_norm == 0 or right_norm == 0:
         return 0.0
-    dot = sum(float(left_value) * float(right_value) for left_value, right_value in zip(left, right))
+    dot = sum(
+        float(left_value) * float(right_value)
+        for left_value, right_value in zip(left, right, strict=True)
+    )
     return dot / (left_norm * right_norm)

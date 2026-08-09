@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from collections.abc import Mapping
+from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
-from typing import Mapping
 
-
-DEFAULT_HIGH_RISK_FLAGS_PATH = (
+_PACKAGED_HIGH_RISK_FLAGS_PATH = Path(
+    str(files("altm").joinpath("configs", "high_risk_flags.env"))
+)
+_REPOSITORY_HIGH_RISK_FLAGS_PATH = (
     Path(__file__).resolve().parents[2] / "configs" / "high_risk_flags.env"
+)
+DEFAULT_HIGH_RISK_FLAGS_PATH = (
+    _PACKAGED_HIGH_RISK_FLAGS_PATH
+    if _PACKAGED_HIGH_RISK_FLAGS_PATH.exists()
+    else _REPOSITORY_HIGH_RISK_FLAGS_PATH
 )
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -35,7 +43,7 @@ class HighRiskFlags:
         cls,
         path: str | Path | None = None,
         environ: Mapping[str, str] | None = None,
-    ) -> "HighRiskFlags":
+    ) -> HighRiskFlags:
         values = _read_env_file(path or DEFAULT_HIGH_RISK_FLAGS_PATH)
         env = os.environ if environ is None else environ
         for name in _FLAG_NAMES:

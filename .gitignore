@@ -7,6 +7,14 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.trae/
+代码精简审查记录/
+memory-system-development-plan.md
+docs/phase-*-scope.md
+docs/phase-*-risk-decision-matrix.md
+docs/*-verification.md
+docs/real-llm-validation.md
+docs/release-readiness-*.md
 .venv/
 .venv-bootstrap/
 .tools/

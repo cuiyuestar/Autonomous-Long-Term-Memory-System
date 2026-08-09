@@ -1,12 +1,11 @@
 import asyncio
-from contextlib import redirect_stdout
-from io import StringIO
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -198,7 +197,12 @@ class ContextFusionTest(unittest.TestCase):
             self.assertEqual(payload["metadata"]["fusion_strategy"], "query_recall_then_active_window")
             self.assertEqual(payload["metadata"]["budget_strategy"], "char_estimate_4_chars_per_token")
             self.assertIn("budget_degraded", payload["metadata"])
-            self.assertIn("memory://active-only", {item["retrieval_marker"] for item in payload["items"]})
+            self.assertTrue(
+                any(
+                    item["retrieval_marker"].startswith("memory://active-only#")
+                    for item in payload["items"]
+                )
+            )
 
     def test_mcp_memory_build_context_exposes_budget_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -214,7 +218,7 @@ class ContextFusionTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,
@@ -225,7 +229,12 @@ class ContextFusionTest(unittest.TestCase):
             self.assertIn("memory_build_context", {tool.name for tool in tools})
             self.assertEqual(result["metadata"]["budget_strategy"], "char_estimate_4_chars_per_token")
             self.assertIn("budget_degraded", result["metadata"])
-            self.assertIn("memory://query-hit", {item["retrieval_marker"] for item in result["items"]})
+            self.assertTrue(
+                any(
+                    item["retrieval_marker"].startswith("memory://query-hit#")
+                    for item in result["items"]
+                )
+            )
 
     def test_cli_build_fused_context_report_outputs_decisions(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -398,7 +407,7 @@ class ContextFusionTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,
@@ -424,7 +433,7 @@ class ContextFusionTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,
@@ -450,7 +459,7 @@ class ContextFusionTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,
@@ -476,7 +485,7 @@ class ContextFusionTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,

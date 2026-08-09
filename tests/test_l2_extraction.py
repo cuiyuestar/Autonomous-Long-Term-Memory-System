@@ -1,11 +1,10 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-from pathlib import Path
 import sys
 import tempfile
 import threading
 import unittest
-
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -16,17 +15,18 @@ from altm.contracts import (  # noqa: E402
     L2AtomType,
     LLMConfig,
     MemoryLayer,
+    MemoryScope,
     MessageRole,
     RecallQuery,
 )
-from altm.folding import L2Extractor, RuleBasedL1Summarizer  # noqa: E402
+from altm.folding import L2Extractor, LLMContextCapsuleSummarizer  # noqa: E402
 from altm.llm import OpenAICompatibleClient  # noqa: E402
 from altm.retrieval import FTSRetrievalEngine  # noqa: E402
 from altm.storage import SQLiteMemoryStore  # noqa: E402
 
 
 class FakeLLMHandler(BaseHTTPRequestHandler):
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         self.rfile.read(content_length)
         response = {
@@ -80,10 +80,36 @@ class FailingClient:
         raise RuntimeError("forced failure")
 
 
+class StubL1Client(OpenAICompatibleClient):
+    def __init__(self) -> None:
+        super().__init__(
+            LLMConfig(
+                base_url="http://unused.invalid/v1",
+                api_key="test",
+                model="l1-test",
+            )
+        )
+
+    def chat_json(self, messages: list[dict[str, str]]) -> dict[str, object]:
+        return {
+            "title": "SQLite L2 extraction context",
+            "task_goal": "Extract grounded L2 memories",
+            "local_context": "The project selected SQLite FTS and requires grounded L2 extraction.",
+            "key_turns": ["Select SQLite FTS", "Use the OpenAI-compatible extractor"],
+            "decisions_mentioned": ["Use SQLite FTS"],
+            "unresolved_questions": [],
+            "topic_tags": ["SQLite", "L2"],
+            "confidence": 0.95,
+        }
+
+
 class L2ExtractionTest(unittest.TestCase):
     def test_real_http_l2_extraction_dual_write_and_filtered_recall(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
+            store = SQLiteMemoryStore(
+                Path(tmpdir) / "memory.sqlite3",
+                scope=MemoryScope(),
+            )
             store.initialize()
             self._seed_l1(store)
 
@@ -124,7 +150,10 @@ class L2ExtractionTest(unittest.TestCase):
 
     def test_l2_extraction_failure_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
+            store = SQLiteMemoryStore(
+                Path(tmpdir) / "memory.sqlite3",
+                scope=MemoryScope(),
+            )
             store.initialize()
             self._seed_l1(store)
 
@@ -139,7 +168,10 @@ class L2ExtractionTest(unittest.TestCase):
 
     def test_l2_exact_duplicate_is_not_written_twice(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
+            store = SQLiteMemoryStore(
+                Path(tmpdir) / "memory.sqlite3",
+                scope=MemoryScope(),
+            )
             store.initialize()
             self._seed_l1(store)
 
@@ -186,7 +218,7 @@ class L2ExtractionTest(unittest.TestCase):
                 content="确认：L2 抽取使用真实 OpenAI 兼容接口，失败时不写 L2。",
             )
         )
-        RuleBasedL1Summarizer(store).fold_session("session-a")
+        LLMContextCapsuleSummarizer(store, StubL1Client()).fold_session("session-a")
 
 
 if __name__ == "__main__":

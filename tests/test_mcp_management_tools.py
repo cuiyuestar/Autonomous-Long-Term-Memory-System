@@ -1,13 +1,12 @@
 import asyncio
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-from pathlib import Path
 import sys
 import tempfile
 import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -27,7 +26,7 @@ from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 
 
 class FakeEmbeddingHandler(BaseHTTPRequestHandler):
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
         inputs = payload["input"]
@@ -54,13 +53,40 @@ class FakeEmbeddingHandler(BaseHTTPRequestHandler):
 
 
 class MCPManagementToolsTest(unittest.TestCase):
-    def test_management_tools_are_registered(self) -> None:
+    def test_runtime_profile_only_exposes_safe_agent_tools(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             app = create_mcp_server(str(Path(tmpdir) / "memory.sqlite3"))
             tools = asyncio.run(app.list_tools())
 
+            self.assertEqual(
+                {tool.name for tool in tools},
+                {
+                    "memory_prepare_turn",
+                    "memory_commit_turn",
+                    "memory_mvp_chat",
+                    "memory_drilldown",
+                    "memory_feedback",
+                    "memory_pin",
+                    "memory_unpin",
+                    "memory_delete",
+                },
+            )
+
+    def test_management_tools_are_registered(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app = create_mcp_server(
+                str(Path(tmpdir) / "memory.sqlite3"),
+                profile="admin",
+            )
+            tools = asyncio.run(app.list_tools())
+
             self.assertTrue(
                 {
+                    "memory_runtime_cycle",
+                    "memory_runtime_session_cycle",
+                    "memory_mvp_chat",
+                    "memory_build_semantic_l3",
+                    "memory_distill_semantic_l4",
                     "memory_index_embeddings",
                     "memory_govern_lifecycle",
                     "memory_maintenance_cycle",
@@ -69,6 +95,75 @@ class MCPManagementToolsTest(unittest.TestCase):
                     "memory_autonomous_governance_rollback",
                 }.issubset({tool.name for tool in tools})
             )
+
+    def test_mcp_runtime_cycle_runs_mvp_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+
+            with patch.dict("os.environ", {}, clear=True):
+                app = create_mcp_server(str(db_path), profile="admin")
+                result = _call_tool(
+                    app,
+                    "memory_runtime_cycle",
+                    {
+                        "session_id": "mvp",
+                        "content": "MCP runtime cycle should produce context.",
+                        "run_maintenance": False,
+                    },
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertEqual(result["steps"]["capture_l0"]["status"], "applied")
+            self.assertGreaterEqual(result["summary"]["context_included_count"], 1)
+
+    def test_mcp_runtime_session_cycle_runs_mvp_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+
+            with patch.dict("os.environ", {}, clear=True):
+                app = create_mcp_server(str(db_path), profile="admin")
+                result = _call_tool(
+                    app,
+                    "memory_runtime_session_cycle",
+                    {
+                        "session_id": "mvp-session",
+                        "messages": [
+                            {"role": "user", "content": "我们决定采用 SQLite。"},
+                            {"role": "assistant", "content": "记录为 MVP 本地存储决策。"},
+                        ],
+                        "run_maintenance": False,
+                    },
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertEqual(result["captured_count"], 2)
+            self.assertGreaterEqual(result["summary"]["context_included_count"], 1)
+
+    def test_mcp_mvp_chat_runs_interactive_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+
+            with patch.dict("os.environ", {}, clear=True):
+                app = create_mcp_server(str(db_path), profile="admin")
+                result = _call_tool(
+                    app,
+                    "memory_mvp_chat",
+                    {
+                        "tenant_id": "local",
+                        "workspace_id": "default",
+                        "user_id": "default",
+                        "agent_id": "default",
+                        "session_id": "mvp-chat",
+                        "content": "MCP should expose the interactive memory loop.",
+                        "assistant_content": "已记录 MCP 交互式记忆闭环。",
+                        "run_maintenance": False,
+                    },
+                )
+
+            self.assertEqual(result["status"], "complete")
+            self.assertIn("assistant_response", result)
+            self.assertEqual(result["committed_turn"]["status"], "committed")
+            self.assertEqual(result["assistant_response"]["cited_memory_ids"], [])
 
     def test_mcp_index_embeddings_uses_env_embedding_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -92,7 +187,7 @@ class MCPManagementToolsTest(unittest.TestCase):
                     },
                     clear=True,
                 ):
-                    app = create_mcp_server(str(db_path))
+                    app = create_mcp_server(str(db_path), profile="admin")
                     result = _call_tool(app, "memory_index_embeddings", {"limit": 10})
             finally:
                 server.shutdown()
@@ -121,7 +216,7 @@ class MCPManagementToolsTest(unittest.TestCase):
             for _ in range(4):
                 store.record_access_signal(memory.id, AccessSignal.USER_CONFIRMED)
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             result = _call_tool(app, "memory_govern_lifecycle", {"limit": 10, "layer": "L2"})
 
             self.assertEqual(result["updated_count"], 1)
@@ -141,7 +236,7 @@ class MCPManagementToolsTest(unittest.TestCase):
                 store.put_memory_unit(memory)
                 store.put_memory_embedding(memory.id, "test-embedding", memory.content_hash, vector)
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             result = _call_tool(
                 app,
                 "memory_semantic_dedup",
@@ -175,7 +270,7 @@ class MCPManagementToolsTest(unittest.TestCase):
                 store.put_memory_unit(memory)
                 store.put_memory_embedding(memory.id, "test-embedding", memory.content_hash, vector)
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(
                 app,
@@ -198,7 +293,7 @@ class MCPManagementToolsTest(unittest.TestCase):
             store.put_memory_unit(first)
             store.put_memory_unit(second)
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(app, "memory_build_l4_persona_candidates", {"min_support": 2})
 
@@ -215,13 +310,13 @@ class MCPManagementToolsTest(unittest.TestCase):
             store.put_memory_unit(_memory("pref-b", "用户偏好直接推进开发。", "preference"))
 
             with patch.dict("os.environ", {}, clear=True):
-                app = create_mcp_server(str(db_path))
+                app = create_mcp_server(str(db_path), profile="admin")
                 result = _call_tool(app, "memory_maintenance_cycle", {"persona_min_support": 2})
 
             self.assertEqual(result["status"], "complete")
             self.assertEqual(result["steps"]["semantic_dedup"]["status"], "skipped")
             self.assertEqual(result["steps"]["build_l4_persona_candidates"]["status"], "skipped")
-            self.assertEqual(result["summary"]["autonomous_l4_applied_count"], 1)
+            self.assertEqual(result["summary"]["autonomous_l4_applied_count"], 0)
 
     def test_mcp_autonomous_governance_cycle_is_registered_and_callable(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -231,13 +326,13 @@ class MCPManagementToolsTest(unittest.TestCase):
             store.put_memory_unit(_memory("pref-a", "用户偏好中文技术深度解释。", "preference"))
             store.put_memory_unit(_memory("pref-b", "用户偏好直接推进开发。", "preference"))
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(app, "memory_autonomous_governance_cycle", {})
 
             self.assertIn("memory_autonomous_governance_cycle", {tool.name for tool in tools})
             self.assertEqual(result["status"], "complete")
-            self.assertEqual(result["summary"]["l4_persona_applied_count"], 1)
+            self.assertEqual(result["summary"]["l4_persona_applied_count"], 0)
 
     def test_mcp_maintenance_cycle_applies_reviewed_actions(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -259,7 +354,7 @@ class MCPManagementToolsTest(unittest.TestCase):
             ReviewQueue(store).mark_graph_edge(edge_id, ReviewStatus.APPROVED)
 
             with patch.dict("os.environ", {}, clear=True):
-                app = create_mcp_server(str(db_path))
+                app = create_mcp_server(str(db_path), profile="admin")
                 result = _call_tool(
                     app,
                     "memory_maintenance_cycle",

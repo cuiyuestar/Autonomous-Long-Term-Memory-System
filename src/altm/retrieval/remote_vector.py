@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from altm.contracts import MemoryLayer, MemoryStatus, MemoryUnit
 from altm.llm import OpenAICompatibleEmbeddingClient
@@ -33,7 +33,7 @@ class EmbeddingIndexer:
                 "Embedding response count mismatch: expected %s, got %s"
                 % (len(targets), len(vectors))
             )
-        for memory, vector in zip(targets, vectors):
+        for memory, vector in zip(targets, vectors, strict=True):
             self.store.put_memory_embedding(
                 memory_id=memory.id,
                 embedding_model=self.client.config.model,

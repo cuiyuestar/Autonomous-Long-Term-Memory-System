@@ -1,15 +1,16 @@
-from pathlib import Path
-from contextlib import redirect_stdout
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from io import StringIO
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from altm.application import AltmApplication  # noqa: E402
+from altm.cli import main as cli_main  # noqa: E402
 from altm.contracts import (  # noqa: E402
     LifecycleState,
     MemoryLayer,
@@ -17,8 +18,6 @@ from altm.contracts import (  # noqa: E402
     MemoryUnit,
     RecallQuery,
 )
-from altm.application import AltmApplication  # noqa: E402
-from altm.cli import main as cli_main  # noqa: E402
 from altm.folding import CrossSessionL3CandidateFinder, RuleBasedL3SceneBuilder  # noqa: E402
 from altm.retrieval import FTSRetrievalEngine  # noqa: E402
 from altm.storage import SQLiteMemoryStore  # noqa: E402

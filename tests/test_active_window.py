@@ -1,12 +1,11 @@
 import asyncio
-from contextlib import redirect_stdout
-from io import StringIO
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -26,7 +25,7 @@ from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 
 
 class GlobalActiveWindowTest(unittest.TestCase):
-    def test_selects_stable_active_memories_and_filters_unreviewed_or_rejected_items(self) -> None:
+    def test_selects_stable_active_memories_and_filters_rejected_items(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
             store.initialize()
@@ -55,7 +54,7 @@ class GlobalActiveWindowTest(unittest.TestCase):
                 ),
                 _memory(
                     "pending",
-                    "待审 L2 不应进入主动窗口。",
+                    "待自治治理的 L2 可以进入主动窗口。",
                     metadata={"atom_type": "decision", "review_status": "pending", "session_id": "s1"},
                     resident_score=0.95,
                 ),
@@ -86,7 +85,7 @@ class GlobalActiveWindowTest(unittest.TestCase):
             candidates = GlobalActiveWindowEngine(store).select(limit=10, session_id="s1")
 
             ids = [candidate.memory.id for candidate in candidates]
-            self.assertEqual(ids, ["approved", "global", "scene"])
+            self.assertEqual(ids, ["approved", "pending", "global", "scene"])
             self.assertIn("global_active_window", candidates[0].matched_by)
             self.assertIn("long_term", candidates[0].matched_by)
             self.assertIn("session_affinity", candidates[0].matched_by)
@@ -228,7 +227,7 @@ class GlobalActiveWindowTest(unittest.TestCase):
             self.assertEqual(report.filtered_count, 2)
             self.assertTrue(decisions["approved"].selected)
             self.assertEqual(decisions["approved"].reason, "selected")
-            self.assertEqual(decisions["pending"].reason, "l2_pending_review")
+            self.assertEqual(decisions["pending"].reason, "outside_limit")
             self.assertEqual(decisions["other-session"].reason, "session_mismatch")
 
     def test_cli_active_window_outputs_context_bundle(self) -> None:
@@ -314,7 +313,7 @@ class GlobalActiveWindowTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(app, "memory_active_window", {"session_id": "s1", "limit": 5})
 
@@ -337,7 +336,7 @@ class GlobalActiveWindowTest(unittest.TestCase):
                 )
             )
 
-            app = create_mcp_server(str(db_path))
+            app = create_mcp_server(str(db_path), profile="admin")
             tools = asyncio.run(app.list_tools())
             result = _call_tool(app, "memory_active_window_report", {"session_id": "s1", "limit": 5})
 

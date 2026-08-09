@@ -1,0 +1,7 @@
+name: altm-memory
+version: "1.0.0"
+description: Scoped ALTM context recall and post-turn commit through Hermes MCP tools
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - on_session_finalize

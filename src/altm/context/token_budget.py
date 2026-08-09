@@ -2,15 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from math import ceil
 import os
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from importlib import import_module
+from math import ceil
+from typing import Protocol, cast
 
 from altm.config import high_risk_flags
 
-
 TokenCounter = Callable[[str], int]
+
+
+class _Encoding(Protocol):
+    def encode(self, text: str) -> list[int]: ...
+
+
+class _TiktokenModule(Protocol):
+    def encoding_for_model(self, model: str) -> _Encoding: ...
+
+    def get_encoding(self, name: str) -> _Encoding: ...
 
 
 @dataclass(frozen=True)
@@ -34,7 +45,7 @@ class ContextBudgeter:
         self.degraded_reason = degraded_reason
 
     @classmethod
-    def from_env(cls) -> "ContextBudgeter":
+    def from_env(cls) -> ContextBudgeter:
         flags = high_risk_flags()
         if not flags.enable_optional_context_tokenizer:
             return cls(degraded=True, degraded_reason="disabled_by_flag")
@@ -71,7 +82,10 @@ class ContextBudgeter:
         )
 
     def _clip_by_token_counter(self, text: str, token_budget: int) -> BudgetedText:
-        total_tokens = self.token_counter(text)
+        counter = self.token_counter
+        if counter is None:
+            return self._clip_by_char_estimate(text, token_budget)
+        total_tokens = counter(text)
         if total_tokens <= token_budget:
             return BudgetedText(text, max(1, total_tokens), truncated=False)
 
@@ -81,20 +95,20 @@ class ContextBudgeter:
         while low <= high:
             mid = (low + high) // 2
             candidate = text[:mid]
-            candidate_tokens = self.token_counter(candidate)
+            candidate_tokens = counter(candidate)
             if candidate_tokens <= token_budget:
                 best = candidate
                 low = mid + 1
             else:
                 high = mid - 1
 
-        consumed = self.token_counter(best) if best else 0
+        consumed = counter(best) if best else 0
         return BudgetedText(best, consumed, truncated=True)
 
 
 def _tiktoken_counter(model: str | None) -> TokenCounter | None:
     try:
-        import tiktoken  # type: ignore[import-not-found]
+        tiktoken = cast(_TiktokenModule, import_module("tiktoken"))
     except ModuleNotFoundError:
         return None
 

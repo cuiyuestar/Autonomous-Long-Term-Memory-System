@@ -1,0 +1,97 @@
+{
+  "id": "altm-memory",
+  "name": "ALTM Memory",
+  "description": "Scoped ALTM context recall and post-turn commit over MCP.",
+  "kind": "memory",
+  "activation": {
+    "onStartup": true
+  },
+  "uiHints": {
+    "endpoint": {
+      "label": "ALTM MCP URL",
+      "placeholder": "http://127.0.0.1:8000/mcp"
+    },
+    "apiKey": {
+      "label": "ALTM API Key",
+      "sensitive": true
+    },
+    "tenantId": {
+      "label": "Tenant ID"
+    },
+    "workspaceId": {
+      "label": "Workspace ID"
+    },
+    "userId": {
+      "label": "User ID",
+      "help": "Stable user identity used for isolation and shared L4 memory."
+    },
+    "agentId": {
+      "label": "Agent ID",
+      "help": "Optional override; defaults to the current OpenClaw agent."
+    },
+    "tokenBudget": {
+      "label": "Context Token Budget",
+      "advanced": true
+    },
+    "recallLimit": {
+      "label": "Recall Limit",
+      "advanced": true
+    },
+    "activeLimit": {
+      "label": "Active Window Limit",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "endpoint",
+      "apiKey",
+      "tenantId",
+      "workspaceId",
+      "userId"
+    ],
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "minLength": 1
+      },
+      "apiKey": {
+        "type": "string",
+        "minLength": 1
+      },
+      "tenantId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "workspaceId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "userId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "agentId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "tokenBudget": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1200
+      },
+      "recallLimit": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 10
+      },
+      "activeLimit": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 5
+      }
+    }
+  }
+}

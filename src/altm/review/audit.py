@@ -80,8 +80,13 @@ class ReviewAuditReporter:
                 "audit_projection_enabled": flags.enable_review_audit_projections,
                 "projection_count": len(projections),
                 "projected_event_count": sum(
-                    int(projection.get("event_count", 0)) for projection in projections
+                    _int_value(projection.get("event_count"))
+                    for projection in projections
                 ),
                 "recent_projections": projections[:recent_limit] if recent_limit > 0 else [],
             },
         )
+
+
+def _int_value(value: object) -> int:
+    return value if isinstance(value, int) else 0

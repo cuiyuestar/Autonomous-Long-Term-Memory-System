@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
+from typing import cast
 
 from altm.contracts import MemoryStatus, MemoryUnit, RecallCandidate, RecallQuery, ScoreBreakdown
 from altm.lifecycle import adjust_retrieval_score
@@ -104,7 +105,11 @@ class QueryEmergenceEngine:
         adjacency: dict[str, list[tuple[str, float]]] = {}
         for edge in self.store.list_graph_edges():
             metadata = edge["metadata"]
-            if isinstance(metadata, dict) and metadata.get("review_status") == "rejected":
+            if (
+                isinstance(metadata, dict)
+                and cast(dict[object, object], metadata).get("review_status")
+                == "rejected"
+            ):
                 continue
             source_id = str(edge["source_memory_id"])
             target_id = str(edge["target_memory_id"])
@@ -114,7 +119,10 @@ class QueryEmergenceEngine:
                 continue
             if not _memory_allowed(source, query) or not _memory_allowed(target, query):
                 continue
-            weight = max(0.0, float(edge["weight"]) * float(edge["confidence"]))
+            weight = max(
+                0.0,
+                _float_value(edge["weight"]) * _float_value(edge["confidence"]),
+            )
             if weight <= 0:
                 continue
             adjacency.setdefault(source_id, []).append((target_id, weight))
@@ -130,7 +138,7 @@ def _seed_scores(candidates: Sequence[RecallCandidate]) -> dict[str, float]:
     total = sum(raw.values())
     if total <= 0:
         fallback = 1.0 / float(len(raw))
-        return {memory_id: fallback for memory_id in raw}
+        return dict.fromkeys(raw, fallback)
     return {memory_id: score / total for memory_id, score in raw.items()}
 
 
@@ -144,3 +152,7 @@ def _memory_allowed(memory: MemoryUnit, query: RecallQuery) -> bool:
     if query.session_id is not None and memory.metadata.get("session_id") != query.session_id:
         return False
     return True
+
+
+def _float_value(value: object) -> float:
+    return float(value) if isinstance(value, (int, float)) else 0.0

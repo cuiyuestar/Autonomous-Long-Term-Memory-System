@@ -3,25 +3,29 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
+from typing import cast
 
 from altm.capture import L0Recorder
 from altm.config import HighRiskFlags, high_risk_flags
-from altm.context import SimpleContextFusion, SimpleContextGateway
+from altm.context import ContentRouter, SimpleContextFusion, SimpleContextGateway
 from altm.contracts import (
     AccessSignal,
     ActiveWindowReport,
     CaptureInput,
+    CommittedTurn,
     ContextBundle,
     ContextFusionBatchComparisonItem,
     ContextFusionBatchComparisonReport,
     ContextFusionComparisonReport,
     ContextFusionReport,
     MemoryLayer,
+    MemoryScope,
     MemoryStatus,
     MemoryUnit,
     MessageRole,
+    PreparedTurn,
     RecallCandidate,
     RecallQuery,
     ReviewActionPlan,
@@ -34,18 +38,27 @@ from altm.contracts import (
 )
 from altm.folding import (
     CrossSessionL3CandidateFinder,
-    L4PersonaCandidateBuilder,
+    GraphLLMExtractor,
     L2Extractor,
-    RuleBasedL1Summarizer,
+    L4PersonaCandidateBuilder,
+    LLMContextCapsuleSummarizer,
     RuleBasedL3SceneBuilder,
+    SemanticL3SceneBuilder,
+    SemanticL4PersonaDistiller,
 )
 from altm.governance import (
     SEMANTIC_DEDUP_MODES,
     AutonomousGovernanceEngine,
-    SemanticDedupPolicy,
     SemanticDeduper,
+    SemanticDedupPolicy,
 )
-from altm.lifecycle import LifecycleGovernor
+from altm.lifecycle import (
+    CompressionLifecycleManager,
+    LifecycleGovernor,
+    PersonaLifecycleManager,
+    RetentionManager,
+    SceneLifecycleManager,
+)
 from altm.llm import (
     OpenAICompatibleClient,
     OpenAICompatibleEmbeddingClient,
@@ -62,6 +75,7 @@ from altm.retrieval import (
 from altm.retrieval.remote_vector import EmbeddingIndexer
 from altm.review import ReviewActionExecutor, ReviewActionPlanner, ReviewAuditReporter, ReviewQueue
 from altm.storage import SQLiteMemoryStore
+from altm.utils import sha256_text, stable_id, utc_now_iso
 
 
 class AltmApplication:
@@ -81,8 +95,12 @@ class AltmApplication:
         self.db_path = db_path
         self.schema_path = schema_path
 
-    def store(self) -> SQLiteMemoryStore:
-        sqlite_store = SQLiteMemoryStore(self.db_path, schema_path=self.schema_path)
+    def store(self, scope: MemoryScope | None = None) -> SQLiteMemoryStore:
+        sqlite_store = SQLiteMemoryStore(
+            self.db_path,
+            schema_path=self.schema_path,
+            scope=scope,
+        )
         sqlite_store.initialize()
         return sqlite_store
 
@@ -95,24 +113,734 @@ class AltmApplication:
         content: str,
         role: str | MessageRole = MessageRole.USER,
         message_id: str | None = None,
+        scope: MemoryScope | None = None,
     ) -> MemoryUnit:
-        return L0Recorder(self.store()).capture(
+        resolved_scope = scope or MemoryScope()
+        return L0Recorder(self.store(resolved_scope)).capture(
             CaptureInput(
                 session_id=session_id,
                 content=content,
+                scope=resolved_scope,
                 role=_message_role(role),
                 message_id=message_id,
             )
         )
 
-    def fold_l1(self, session_id: str) -> Sequence[MemoryUnit]:
-        return RuleBasedL1Summarizer(self.store()).fold_session(session_id)
+    def fold_l1(
+        self,
+        session_id: str,
+        scope: MemoryScope | None = None,
+    ) -> Sequence[MemoryUnit]:
+        resolved_scope = scope or MemoryScope()
+        return LLMContextCapsuleSummarizer(
+            self.store(resolved_scope),
+            OpenAICompatibleClient(llm_config_from_env("l1")),
+        ).fold_session(session_id)
 
-    def extract_l2(self, session_id: str) -> Sequence[MemoryUnit]:
+    def extract_l2(
+        self,
+        session_id: str,
+        scope: MemoryScope | None = None,
+    ) -> Sequence[MemoryUnit]:
+        resolved_scope = scope or MemoryScope()
         return L2Extractor(
-            self.store(),
-            OpenAICompatibleClient(llm_config_from_env()),
+            self.store(resolved_scope),
+            OpenAICompatibleClient(llm_config_from_env("l2")),
         ).extract_from_session(session_id)
+
+    def prepare_turn(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        session_id: str,
+        turn_id: str,
+        content: str,
+        message_id: str | None = None,
+        query: str | None = None,
+        token_budget: int = 1200,
+        recall_limit: int = 10,
+        active_window_mode: str | None = None,
+        active_limit: int = 5,
+        strict_session: bool = False,
+    ) -> PreparedTurn:
+        scope = MemoryScope(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+        store = self.store(scope)
+        capture_input = CaptureInput(
+            session_id=session_id,
+            content=content,
+            scope=scope,
+            role=MessageRole.USER,
+            message_id=message_id or "%s:user" % turn_id,
+        )
+        user_memory = L0Recorder(store).capture(capture_input)
+        resolved_query = query or content
+        bundle = self.build_context(
+            query=resolved_query,
+            token_budget=token_budget,
+            limit=recall_limit,
+            session_id=session_id,
+            active_window_mode=active_window_mode,
+            active_limit=active_limit,
+            strict_session=strict_session,
+            scope=scope,
+        )
+        cycle_id = stable_id(
+            "cycle",
+            *scope.key_parts(),
+            session_id,
+            turn_id,
+        )
+        cycle = store.create_runtime_cycle(
+            cycle_id=cycle_id,
+            session_id=session_id,
+            turn_id=turn_id,
+            user_memory_id=user_memory.id,
+            user_content_hash=user_memory.content_hash,
+            query=resolved_query,
+            context=bundle,
+            metadata={"protocol": "prepare_commit_v1"},
+        )
+        job_id = store.enqueue_job(
+            job_type="fold_l1",
+            dedupe_key=user_memory.id,
+            session_id=session_id,
+            payload={"session_id": session_id, "trigger_memory_id": user_memory.id},
+        )
+        return PreparedTurn(
+            cycle_id=str(cycle["id"]),
+            scope=scope,
+            session_id=session_id,
+            turn_id=turn_id,
+            user_memory_id=str(cycle["user_memory_id"]),
+            query=str(cycle["query"]),
+            context=ContextBundle.model_validate(cycle["context"]),
+            enqueued_job_ids=[job_id],
+            status=str(cycle["status"]),
+            metadata=_object_dict(cycle["metadata"]),
+        )
+
+    def commit_turn(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        cycle_id: str,
+        assistant_content: str,
+        cited_memory_ids: Sequence[str] = (),
+        assistant_message_id: str | None = None,
+    ) -> CommittedTurn:
+        scope = MemoryScope(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+        store = self.store(scope)
+        cycle = store.get_runtime_cycle(cycle_id)
+        if cycle is None:
+            raise ValueError("Unknown runtime cycle: %s" % cycle_id)
+        session_id = str(cycle["session_id"])
+        turn_id = str(cycle["turn_id"])
+        assistant_memory = L0Recorder(store).build(
+            CaptureInput(
+                session_id=session_id,
+                content=assistant_content,
+                scope=scope,
+                role=MessageRole.ASSISTANT,
+                message_id=assistant_message_id or "%s:assistant" % turn_id,
+            )
+        )
+        committed = store.commit_runtime_cycle(
+            cycle_id=cycle_id,
+            assistant_memory=assistant_memory,
+            cited_memory_ids=cited_memory_ids,
+            metadata={"protocol": "prepare_commit_v1"},
+        )
+        job_id = store.enqueue_job(
+            job_type="fold_l1",
+            dedupe_key=assistant_memory.id,
+            session_id=session_id,
+            payload={
+                "session_id": session_id,
+                "trigger_memory_id": assistant_memory.id,
+            },
+        )
+        return CommittedTurn(
+            cycle_id=cycle_id,
+            scope=scope,
+            session_id=session_id,
+            turn_id=turn_id,
+            assistant_memory_id=assistant_memory.id,
+            cited_memory_ids=_string_values(committed["cited_memory_ids"]),
+            enqueued_job_ids=[job_id],
+            status=str(committed["status"]),
+            metadata=_object_dict(committed["metadata"]),
+        )
+
+    def process_next_job(
+        self,
+        worker_id: str,
+        lease_seconds: int = 120,
+    ) -> dict[str, object]:
+        control_store = self.store()
+        job = control_store.claim_job(worker_id=worker_id, lease_seconds=lease_seconds)
+        if job is None:
+            return {"status": "idle", "worker_id": worker_id}
+
+        job_id = str(job["id"])
+        scope = MemoryScope.model_validate(job["scope"])
+        payload_value = job.get("payload", {})
+        if not isinstance(payload_value, dict):
+            control_store.fail_job(job_id, worker_id, "runtime job payload is not an object")
+            return {"status": "failed", "job_id": job_id, "reason": "invalid_payload"}
+        payload = _object_dict(cast(object, payload_value))
+        session_id = str(payload.get("session_id") or job.get("session_id") or "")
+        try:
+            if job["job_type"] == "fold_l1":
+                memories = list(self.fold_l1(session_id=session_id, scope=scope))
+                result: dict[str, object] = {
+                    "created_count": len(memories),
+                    "memory_ids": [memory.id for memory in memories],
+                }
+                if memories:
+                    self.store(scope).enqueue_job(
+                        job_type="extract_l2",
+                        dedupe_key=memories[-1].id,
+                        session_id=session_id,
+                        payload={
+                            "session_id": session_id,
+                            "trigger_memory_id": memories[-1].id,
+                        },
+                    )
+            elif job["job_type"] == "extract_l2":
+                memories = list(self.extract_l2(session_id=session_id, scope=scope))
+                result = {
+                    "created_count": len(memories),
+                    "memory_ids": [memory.id for memory in memories],
+                }
+                if memories:
+                    self.store(scope).enqueue_job(
+                        job_type="index_embeddings",
+                        dedupe_key=memories[-1].id,
+                        session_id=session_id,
+                        payload={
+                            "session_id": session_id,
+                            "trigger_memory_id": memories[-1].id,
+                        },
+                    )
+                    self.store(scope).enqueue_job(
+                        job_type="graph_extract",
+                        dedupe_key=memories[-1].id,
+                        session_id=session_id,
+                        payload={
+                            "session_id": session_id,
+                            "trigger_memory_id": memories[-1].id,
+                        },
+                    )
+            elif job["job_type"] == "graph_extract":
+                result = GraphLLMExtractor(self.store(scope)).extract_session(
+                    session_id=session_id
+                )
+            elif job["job_type"] == "index_embeddings":
+                result = self.index_embeddings(limit=100, scope=scope)
+                embedding_model = str(result["embedding_model"])
+                trigger_memory_id = str(
+                    payload.get("trigger_memory_id") or session_id
+                )
+                self.store(scope).enqueue_job(
+                    job_type="semantic_l3",
+                    dedupe_key="%s:%s" % (trigger_memory_id, embedding_model),
+                    session_id=session_id,
+                    payload={
+                        "session_id": session_id,
+                        "embedding_model": embedding_model,
+                        "trigger_memory_id": trigger_memory_id,
+                    },
+                )
+            elif job["job_type"] == "semantic_l3":
+                embedding_model = str(payload.get("embedding_model") or "")
+                if not embedding_model:
+                    raise ValueError("semantic_l3 job requires embedding_model")
+                memories = list(
+                    SemanticL3SceneBuilder(
+                        self.store(scope),
+                        embedding_model=embedding_model,
+                    ).build()
+                )
+                result = {
+                    "created_count": len(memories),
+                    "memory_ids": [memory.id for memory in memories],
+                }
+                activated = list(
+                    SceneLifecycleManager(self.store(scope)).advance()
+                )
+                result.update(
+                    {
+                        "activated_count": len(activated),
+                        "activated_memory_ids": [
+                            memory.id for memory in activated
+                        ],
+                    }
+                )
+                trigger_memory_id = str(
+                    payload.get("trigger_memory_id") or session_id
+                )
+                self.store(scope).enqueue_job(
+                    job_type="semantic_l4",
+                    dedupe_key="%s:%s" % (trigger_memory_id, embedding_model),
+                    session_id=session_id,
+                    payload={
+                        "session_id": session_id,
+                        "embedding_model": embedding_model,
+                        "trigger_memory_id": trigger_memory_id,
+                    },
+                )
+            elif job["job_type"] == "semantic_l4":
+                embedding_model = str(payload.get("embedding_model") or "")
+                if not embedding_model:
+                    raise ValueError("semantic_l4 job requires embedding_model")
+                memories = list(
+                    SemanticL4PersonaDistiller(
+                        self.store(scope),
+                        embedding_model=embedding_model,
+                    ).distill()
+                )
+                activated = list(
+                    PersonaLifecycleManager(self.store(scope)).advance()
+                )
+                result = {
+                    "created_count": len(memories),
+                    "memory_ids": [memory.id for memory in memories],
+                    "activated_count": len(activated),
+                    "activated_memory_ids": [memory.id for memory in activated],
+                }
+                trigger_memory_id = str(
+                    payload.get("trigger_memory_id") or session_id
+                )
+                self.store(scope).enqueue_job(
+                    job_type="lifecycle",
+                    dedupe_key=trigger_memory_id,
+                    session_id=session_id,
+                    payload={"session_id": session_id},
+                )
+                self.store(scope).enqueue_job(
+                    job_type="retention",
+                    dedupe_key=trigger_memory_id,
+                    session_id=session_id,
+                    payload={"session_id": session_id},
+                )
+            elif job["job_type"] == "lifecycle":
+                memories = list(LifecycleGovernor(self.store(scope)).run_cycle())
+                compressed = list(
+                    CompressionLifecycleManager(self.store(scope)).run()
+                )
+                result = {
+                    "updated_count": len(memories),
+                    "memory_ids": [memory.id for memory in memories],
+                    "compressed_count": len(compressed),
+                    "compressed_memory_ids": [
+                        memory.id for memory in compressed
+                    ],
+                }
+            elif job["job_type"] == "retention":
+                deleted = list(
+                    RetentionManager(self.store(scope)).delete_expired_l0()
+                )
+                result = {
+                    "deleted_count": len(deleted),
+                    "deletions": deleted,
+                }
+            else:
+                raise ValueError("Unsupported runtime job type: %s" % job["job_type"])
+        except Exception as exc:
+            control_store.fail_job(job_id, worker_id, str(exc))
+            failed = control_store.get_job(job_id)
+            return {
+                "status": str(failed["status"]) if failed is not None else "failed",
+                "job_id": job_id,
+                "job_type": job["job_type"],
+                "error": str(exc),
+            }
+
+        control_store.complete_job(job_id, worker_id, result)
+        return {
+            "status": "completed",
+            "job_id": job_id,
+            "job_type": job["job_type"],
+            "result": result,
+        }
+
+    def pin_memory(
+        self,
+        scope: MemoryScope,
+        memory_id: str,
+        pinned: bool,
+    ) -> MemoryUnit:
+        store = self.store(scope)
+        memory = store.get_memory_unit(memory_id)
+        if memory is None:
+            raise ValueError("Memory does not exist in the active scope: %s" % memory_id)
+        metadata = dict(memory.metadata)
+        metadata["pinned"] = pinned
+        metadata["pin_updated_at"] = utc_now_iso()
+        updated = memory.model_copy(
+            update={"metadata": metadata, "updated_at": utc_now_iso()}
+        )
+        store.put_memory_unit(updated)
+        if pinned:
+            store.record_access_signal(memory_id, AccessSignal.USER_CONFIRMED)
+        return updated
+
+    def delete_memory(
+        self,
+        scope: MemoryScope,
+        memory_id: str,
+        reason: str,
+        physical: bool = False,
+    ) -> dict[str, object]:
+        return RetentionManager(self.store(scope)).delete_memory(
+            memory_id=memory_id,
+            reason=reason,
+            physical=physical,
+        )
+
+    def runtime_cycle(
+        self,
+        session_id: str,
+        content: str,
+        role: str | MessageRole = MessageRole.USER,
+        message_id: str | None = None,
+        query: str | None = None,
+        token_budget: int = 1200,
+        recall_limit: int = 10,
+        active_window_mode: str | None = None,
+        active_limit: int = 5,
+        strict_session: bool = False,
+        fold_l1: bool = True,
+        extract_l2: bool = True,
+        run_maintenance: bool = True,
+        maintenance_model: str | None = None,
+        index_embeddings: bool = False,
+        embedding_limit: int = 100,
+        scope: MemoryScope | None = None,
+    ) -> dict[str, object]:
+        resolved_scope = scope or MemoryScope()
+        steps: dict[str, object] = {}
+        captured = self.remember(
+            session_id=session_id,
+            content=content,
+            role=role,
+            message_id=message_id,
+            scope=resolved_scope,
+        )
+        steps["capture_l0"] = {
+            "status": "applied",
+            "memory_id": captured.id,
+            "memory": captured.model_dump(mode="json"),
+        }
+
+        if fold_l1:
+            try:
+                folded = list(self.fold_l1(session_id=session_id, scope=resolved_scope))
+                steps["fold_l1"] = {
+                    "status": "applied",
+                    "memory_ids": [memory.id for memory in folded],
+                    "count": len(folded),
+                }
+            except Exception as exc:
+                steps["fold_l1"] = {"status": "degraded", "error": str(exc)}
+        else:
+            steps["fold_l1"] = {"status": "skipped", "reason": "not_requested"}
+
+        if extract_l2:
+            try:
+                extracted = list(
+                    self.extract_l2(session_id=session_id, scope=resolved_scope)
+                )
+                steps["extract_l2"] = {
+                    "status": "applied",
+                    "memory_ids": [memory.id for memory in extracted],
+                    "count": len(extracted),
+                }
+            except Exception as exc:
+                steps["extract_l2"] = {"status": "degraded", "error": str(exc)}
+        else:
+            steps["extract_l2"] = {"status": "skipped", "reason": "not_requested"}
+
+        if run_maintenance:
+            steps["maintenance_cycle"] = {
+                "status": "applied",
+                "result": self.maintenance_cycle(
+                    model=maintenance_model,
+                    index_embeddings=index_embeddings,
+                    embedding_limit=embedding_limit,
+                    dry_run=False,
+                ),
+            }
+        else:
+            steps["maintenance_cycle"] = {"status": "skipped", "reason": "not_requested"}
+
+        bundle = self.build_context(
+            query=query or content,
+            token_budget=token_budget,
+            limit=recall_limit,
+            session_id=session_id,
+            active_window_mode=active_window_mode,
+            active_limit=active_limit,
+            strict_session=strict_session,
+            scope=resolved_scope,
+        )
+        steps["build_context"] = {
+            "status": "applied",
+            "included_count": len(bundle.items),
+            "metadata": bundle.metadata,
+        }
+        injected_memory_ids = _record_context_bundle_signal(
+            store=self.store(resolved_scope),
+            bundle=bundle,
+            signal=AccessSignal.INJECTED,
+            source="runtime_cycle",
+            query=query or content,
+            session_id=session_id,
+            strength=0.45,
+        )
+        steps["record_context_feedback"] = {
+            "status": "applied",
+            "signal": AccessSignal.INJECTED.value,
+            "count": len(injected_memory_ids),
+            "memory_ids": injected_memory_ids,
+        }
+
+        return {
+            "status": "complete",
+            "session_id": session_id,
+            "query": query or content,
+            "steps": steps,
+            "context": bundle.model_dump(mode="json"),
+            "summary": _runtime_cycle_summary(steps),
+        }
+
+    def runtime_session_cycle(
+        self,
+        session_id: str,
+        messages: Sequence[dict[str, object]],
+        query: str | None = None,
+        token_budget: int = 1200,
+        recall_limit: int = 10,
+        active_window_mode: str | None = None,
+        active_limit: int = 5,
+        strict_session: bool = False,
+        fold_l1: bool = True,
+        extract_l2: bool = True,
+        run_maintenance: bool = True,
+        maintenance_model: str | None = None,
+        index_embeddings: bool = False,
+        embedding_limit: int = 100,
+        scope: MemoryScope | None = None,
+    ) -> dict[str, object]:
+        resolved_scope = scope or MemoryScope()
+        steps: dict[str, object] = {}
+        capture_inputs: list[CaptureInput] = []
+        for message in messages:
+            content = str(message.get("content", "")).strip()
+            if not content:
+                continue
+            role = str(message.get("role", MessageRole.USER.value))
+            message_id = message.get("message_id")
+            capture_inputs.append(
+                CaptureInput(
+                    session_id=session_id,
+                    content=content,
+                    scope=resolved_scope,
+                    role=_message_role(role),
+                    message_id=str(message_id) if message_id is not None else None,
+                )
+            )
+        store = self.store(resolved_scope)
+        recorder = L0Recorder(store)
+        captured = [recorder.build(capture_input) for capture_input in capture_inputs]
+        store.put_memory_units(captured)
+        steps["capture_l0"] = {
+            "status": "applied",
+            "count": len(captured),
+            "memory_ids": [memory.id for memory in captured],
+        }
+
+        if fold_l1:
+            try:
+                folded = list(self.fold_l1(session_id=session_id, scope=resolved_scope))
+                steps["fold_l1"] = {
+                    "status": "applied",
+                    "memory_ids": [memory.id for memory in folded],
+                    "count": len(folded),
+                }
+            except Exception as exc:
+                steps["fold_l1"] = {"status": "degraded", "error": str(exc)}
+        else:
+            steps["fold_l1"] = {"status": "skipped", "reason": "not_requested"}
+
+        if extract_l2:
+            try:
+                extracted = list(
+                    self.extract_l2(session_id=session_id, scope=resolved_scope)
+                )
+                steps["extract_l2"] = {
+                    "status": "applied",
+                    "memory_ids": [memory.id for memory in extracted],
+                    "count": len(extracted),
+                }
+            except Exception as exc:
+                steps["extract_l2"] = {"status": "degraded", "error": str(exc)}
+        else:
+            steps["extract_l2"] = {"status": "skipped", "reason": "not_requested"}
+
+        if run_maintenance:
+            steps["maintenance_cycle"] = {
+                "status": "applied",
+                "result": self.maintenance_cycle(
+                    model=maintenance_model,
+                    index_embeddings=index_embeddings,
+                    embedding_limit=embedding_limit,
+                    dry_run=False,
+                ),
+            }
+        else:
+            steps["maintenance_cycle"] = {"status": "skipped", "reason": "not_requested"}
+
+        fallback_query = query or _last_message_content(messages) or session_id
+        bundle = self.build_context(
+            query=fallback_query,
+            token_budget=token_budget,
+            limit=recall_limit,
+            session_id=session_id,
+            active_window_mode=active_window_mode,
+            active_limit=active_limit,
+            strict_session=strict_session,
+            scope=resolved_scope,
+        )
+        steps["build_context"] = {
+            "status": "applied",
+            "included_count": len(bundle.items),
+            "metadata": bundle.metadata,
+        }
+        injected_memory_ids = _record_context_bundle_signal(
+            store=store,
+            bundle=bundle,
+            signal=AccessSignal.INJECTED,
+            source="runtime_session_cycle",
+            query=fallback_query,
+            session_id=session_id,
+            strength=0.45,
+        )
+        steps["record_context_feedback"] = {
+            "status": "applied",
+            "signal": AccessSignal.INJECTED.value,
+            "count": len(injected_memory_ids),
+            "memory_ids": injected_memory_ids,
+        }
+
+        return {
+            "status": "complete",
+            "session_id": session_id,
+            "query": fallback_query,
+            "message_count": len(messages),
+            "captured_count": len(captured),
+            "steps": steps,
+            "context": bundle.model_dump(mode="json"),
+            "summary": _runtime_cycle_summary(steps),
+        }
+
+    def mvp_chat(
+        self,
+        session_id: str,
+        content: str,
+        role: str | MessageRole = MessageRole.USER,
+        message_id: str | None = None,
+        assistant_content: str | None = None,
+        assistant_message_id: str | None = None,
+        cited_memory_ids: Sequence[str] = (),
+        turn_id: str | None = None,
+        scope: MemoryScope | None = None,
+        query: str | None = None,
+        token_budget: int = 1200,
+        recall_limit: int = 10,
+        active_window_mode: str | None = None,
+        active_limit: int = 5,
+        strict_session: bool = False,
+        fold_l1: bool = True,
+        extract_l2: bool = True,
+        run_maintenance: bool = True,
+        maintenance_model: str | None = None,
+        index_embeddings: bool = False,
+        embedding_limit: int = 100,
+    ) -> dict[str, object]:
+        del fold_l1, extract_l2, run_maintenance, maintenance_model
+        del index_embeddings, embedding_limit
+        resolved_scope = scope or MemoryScope()
+        if _message_role(role) != MessageRole.USER:
+            raise ValueError("mvp_chat compatibility wrapper only accepts a user turn")
+        if assistant_content is None or not assistant_content.strip():
+            raise ValueError(
+                "mvp_chat no longer generates a synthetic assistant response; "
+                "pass the real Host Agent response or use prepare_turn/commit_turn"
+            )
+        resolved_turn_id = turn_id or message_id or stable_id(
+            "legacy_turn",
+            *resolved_scope.key_parts(),
+            session_id,
+            sha256_text(content),
+        )
+        prepared = self.prepare_turn(
+            tenant_id=resolved_scope.tenant_id,
+            workspace_id=resolved_scope.workspace_id,
+            user_id=resolved_scope.user_id,
+            agent_id=resolved_scope.agent_id,
+            session_id=session_id,
+            turn_id=resolved_turn_id,
+            content=content,
+            message_id=message_id,
+            query=query,
+            token_budget=token_budget,
+            recall_limit=recall_limit,
+            active_window_mode=active_window_mode,
+            active_limit=active_limit,
+            strict_session=strict_session,
+        )
+        committed = self.commit_turn(
+            tenant_id=resolved_scope.tenant_id,
+            workspace_id=resolved_scope.workspace_id,
+            user_id=resolved_scope.user_id,
+            agent_id=resolved_scope.agent_id,
+            cycle_id=prepared.cycle_id,
+            assistant_content=assistant_content,
+            cited_memory_ids=cited_memory_ids,
+            assistant_message_id=assistant_message_id,
+        )
+        return {
+            "status": "complete",
+            "session_id": session_id,
+            "turn_id": resolved_turn_id,
+            "cycle_id": prepared.cycle_id,
+            "deprecated": True,
+            "deprecation_message": "Use prepare_turn followed by commit_turn.",
+            "prepared_turn": prepared.model_dump(mode="json"),
+            "assistant_response": {
+                "content": assistant_content,
+                "memory_id": committed.assistant_memory_id,
+                "message_id": assistant_message_id,
+                "cited_memory_ids": committed.cited_memory_ids,
+            },
+            "committed_turn": committed.model_dump(mode="json"),
+            "context": prepared.context.model_dump(mode="json"),
+        }
 
     def cluster_l3(
         self,
@@ -125,6 +853,56 @@ class AltmApplication:
             min_group_size=min_group_size,
             limit=limit,
         )
+
+    def build_semantic_l3(
+        self,
+        scope: MemoryScope,
+        model: str | None = None,
+        threshold: float = 0.82,
+        limit: int = 1000,
+    ) -> dict[str, object]:
+        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        if not embedding_model:
+            raise RuntimeError("Semantic L3 requires ALTM_EMBEDDING_MODEL")
+        memories = list(
+            SemanticL3SceneBuilder(
+                self.store(scope),
+                embedding_model=embedding_model,
+                similarity_threshold=threshold,
+            ).build(limit=limit)
+        )
+        activated = list(SceneLifecycleManager(self.store(scope)).advance())
+        return {
+            "created_count": len(memories),
+            "memory_ids": [memory.id for memory in memories],
+            "activated_count": len(activated),
+            "activated_memory_ids": [memory.id for memory in activated],
+        }
+
+    def distill_semantic_l4(
+        self,
+        scope: MemoryScope,
+        model: str | None = None,
+        threshold: float = 0.84,
+        limit: int = 1000,
+    ) -> dict[str, object]:
+        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        if not embedding_model:
+            raise RuntimeError("Semantic L4 requires ALTM_EMBEDDING_MODEL")
+        memories = list(
+            SemanticL4PersonaDistiller(
+                self.store(scope),
+                embedding_model=embedding_model,
+                similarity_threshold=threshold,
+            ).distill(limit=limit)
+        )
+        activated = list(PersonaLifecycleManager(self.store(scope)).advance())
+        return {
+            "created_count": len(memories),
+            "memory_ids": [memory.id for memory in memories],
+            "activated_count": len(activated),
+            "activated_memory_ids": [memory.id for memory in activated],
+        }
 
     def cross_session_l3_candidates(
         self,
@@ -218,20 +996,30 @@ class AltmApplication:
         layers: Sequence[str | MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[str | MemoryStatus] | None = None,
+        scope: MemoryScope | None = None,
     ) -> Sequence[RecallCandidate]:
-        store = self.store()
+        store = self.store(scope)
         return FTSRetrievalEngine(store, optional_embedding_client_from_env()).recall(
             RecallQuery(
                 text=query,
                 top_k=limit,
+                scope=scope,
                 preferred_layers=_memory_layers(layers),
                 session_id=session_id,
                 statuses=_memory_statuses(statuses),
             )
         )
 
-    def drilldown(self, memory_id: str) -> MemoryUnit | None:
-        return self.store().get_memory_unit(memory_id)
+    def drilldown(
+        self,
+        memory_id: str,
+        scope: MemoryScope | None = None,
+        query: str | None = None,
+    ) -> MemoryUnit | dict[str, object] | None:
+        store = self.store(scope)
+        if memory_id.startswith("memory://") and "#" in memory_id:
+            return ContentRouter(store).retrieve(memory_id, query=query)
+        return store.get_memory_unit(memory_id)
 
     def build_context(
         self,
@@ -245,9 +1033,11 @@ class AltmApplication:
         active_limit: int = 5,
         candidate_limit: int | None = None,
         strict_session: bool = False,
+        scope: MemoryScope | None = None,
     ) -> ContextBundle:
         flags = high_risk_flags()
         mode = _active_window_mode(active_window_mode, flags)
+        store = self.store(scope)
         if mode == "off":
             candidates = self.recall(
                 query=query,
@@ -255,10 +1045,13 @@ class AltmApplication:
                 layers=layers,
                 session_id=session_id,
                 statuses=statuses,
+                scope=scope,
             )
-            return SimpleContextGateway().assemble(candidates, token_budget=token_budget)
+            return SimpleContextGateway(store=store).assemble(
+                candidates,
+                token_budget=token_budget,
+            )
 
-        store = self.store()
         active_count = min(active_limit, 2) if mode == "limited" else active_limit
         recall_candidates, active_candidates = self._fusion_candidates(
             query=query,
@@ -271,31 +1064,22 @@ class AltmApplication:
             store=store,
             flags=flags,
         )
-        fusion_report = SimpleContextFusion().report(
+        fusion_report = SimpleContextFusion(
+            SimpleContextGateway(store=store)
+        ).report(
             recall_candidates=recall_candidates,
             active_candidates=active_candidates,
             token_budget=token_budget,
             candidate_limit=candidate_limit,
         )
         bundle = fusion_report.bundle
-        feedback_memory_ids: list[str] = []
-        if flags.enable_active_window_lifecycle_feedback:
-            feedback_memory_ids = _record_active_window_injections(
-                store=store,
-                report=fusion_report,
-                query=query,
-                mode=mode,
-                session_id=session_id,
-            )
         metadata = dict(bundle.metadata)
         metadata.update(
             {
                 "active_window_mode": mode,
                 "active_limit": active_count,
-                "active_window_lifecycle_feedback": (
-                    "injected" if flags.enable_active_window_lifecycle_feedback else "disabled"
-                ),
-                "active_window_feedback_memory_ids": feedback_memory_ids,
+                "active_window_lifecycle_feedback": "deferred_to_prepare_turn",
+                "active_window_feedback_memory_ids": [],
             }
         )
         return bundle.model_copy(update={"metadata": metadata})
@@ -495,9 +1279,13 @@ class AltmApplication:
             },
         )
 
-    def index_embeddings(self, limit: int = 100) -> dict[str, object]:
+    def index_embeddings(
+        self,
+        limit: int = 100,
+        scope: MemoryScope | None = None,
+    ) -> dict[str, object]:
         client = OpenAICompatibleEmbeddingClient(embedding_config_from_env())
-        indexed = EmbeddingIndexer(self.store(), client).index_missing(limit=limit)
+        indexed = EmbeddingIndexer(self.store(scope), client).index_missing(limit=limit)
         return {
             "embedding_model": client.config.model,
             "indexed_count": len(indexed),
@@ -516,7 +1304,7 @@ class AltmApplication:
         persona_min_support: int = 2,
         use_autonomous_governance: bool = True,
         autonomous_model_mode: str = "auto",
-        autonomous_rule_fallback: bool = True,
+        autonomous_rule_fallback: bool = False,
         apply_review_actions: bool = False,
         review_action_limit: int = 100,
         include_rejected_review_actions: bool = True,
@@ -543,13 +1331,22 @@ class AltmApplication:
         lifecycle = self.govern_lifecycle(limit=governance_limit)
         steps["govern_lifecycle"] = {"status": "applied", "result": lifecycle}
 
-        if embedding_model:
+        if use_autonomous_governance:
+            steps["semantic_dedup"] = {
+                "status": "skipped",
+                "reason": "autonomous_governance_replaces_legacy_semantic_dedup",
+            }
+            steps["cross_session_l3_candidates"] = {
+                "status": "skipped",
+                "reason": "autonomous_governance_replaces_legacy_l3_candidates",
+            }
+        elif embedding_model:
             steps["semantic_dedup"] = {
                 "status": "applied",
                 "result": self.semantic_dedup(
                     model=embedding_model,
                     threshold=semantic_threshold,
-                    mode="mark-only" if use_autonomous_governance else semantic_mode,
+                    mode=semantic_mode,
                     dry_run=dry_run,
                 ),
             }
@@ -642,7 +1439,7 @@ class AltmApplication:
         include_p0: bool = True,
         include_p1: bool = True,
         model_mode: str = "auto",
-        rule_fallback: bool = True,
+        rule_fallback: bool = False,
         dry_run: bool = False,
         limit: int = 1000,
     ) -> dict[str, object]:
@@ -674,8 +1471,13 @@ class AltmApplication:
             reason=reason,
         )
 
-    def feedback(self, memory_id: str, signal: str | AccessSignal) -> MemoryUnit | None:
-        store = self.store()
+    def feedback(
+        self,
+        memory_id: str,
+        signal: str | AccessSignal,
+        scope: MemoryScope | None = None,
+    ) -> MemoryUnit | None:
+        store = self.store(scope)
         store.record_access_signal(memory_id, _access_signal(signal))
         return store.get_memory_unit(memory_id)
 
@@ -1097,30 +1899,44 @@ def _active_window_engine(
     )
 
 
-def _record_active_window_injections(
+def _record_context_bundle_signal(
     store: SQLiteMemoryStore,
-    report: ContextFusionReport,
+    bundle: ContextBundle,
+    signal: AccessSignal,
+    source: str,
     query: str,
-    mode: str,
     session_id: str | None,
+    strength: float,
+    metadata: dict[str, object] | None = None,
 ) -> list[str]:
-    memory_ids: list[str] = []
-    for decision in report.decisions:
-        if not decision.selected or "active_window" not in decision.sources:
-            continue
+    memory_ids = _context_source_memory_ids(bundle)
+    base_metadata: dict[str, object] = {
+        "source": source,
+        "query": query,
+        "session_id": session_id,
+        "context_item_count": len(bundle.items),
+    }
+    if metadata:
+        base_metadata.update(metadata)
+    for memory_id in memory_ids:
         store.record_access_signal(
-            decision.memory_id,
-            AccessSignal.INJECTED,
-            strength=0.35,
-            metadata={
-                "source": "build_context_active_window",
-                "query": query,
-                "active_window_mode": mode,
-                "session_id": session_id,
-                "sources": decision.sources,
-            },
+            memory_id,
+            signal,
+            strength=strength,
+            metadata=base_metadata,
         )
-        memory_ids.append(decision.memory_id)
+    return memory_ids
+
+
+def _context_source_memory_ids(bundle: ContextBundle) -> list[str]:
+    memory_ids: list[str] = []
+    seen: set[str] = set()
+    for item in bundle.items:
+        for memory_id in item.source_memory_ids:
+            if memory_id in seen:
+                continue
+            seen.add(memory_id)
+            memory_ids.append(memory_id)
     return memory_ids
 
 
@@ -1138,22 +1954,32 @@ def _batch_recommendation(
     return "collect_more_evidence"
 
 
+def _object_dict(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key): item
+        for key, item in cast(dict[object, object], value).items()
+    }
+
+
+def _string_values(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in cast(list[object], value)]
+
+
 def _maintenance_summary(steps: dict[str, object]) -> dict[str, object]:
     def step_result(name: str) -> dict[str, object]:
-        step = steps.get(name, {})
-        if not isinstance(step, dict):
-            return {}
-        result = step.get("result", {})
-        return result if isinstance(result, dict) else {}
+        step = _object_dict(steps.get(name))
+        return _object_dict(step.get("result"))
 
     lifecycle = step_result("govern_lifecycle")
     semantic = step_result("semantic_dedup")
     l3 = step_result("cross_session_l3_candidates")
     l4 = step_result("build_l4_persona_candidates")
     autonomous = step_result("autonomous_governance")
-    autonomous_summary = autonomous.get("summary", {})
-    if not isinstance(autonomous_summary, dict):
-        autonomous_summary = {}
+    autonomous_summary = _object_dict(autonomous.get("summary"))
     review_actions = step_result("apply_review_actions")
     audit = step_result("review_audit")
     return {
@@ -1180,6 +2006,47 @@ def _maintenance_summary(steps: dict[str, object]) -> dict[str, object]:
         "review_action_skipped_count": review_actions.get("skipped_count", 0),
         "review_event_count": audit.get("total_events", 0),
     }
+
+
+def _runtime_cycle_summary(steps: dict[str, object]) -> dict[str, object]:
+    degraded_steps = [
+        name
+        for name, step in steps.items()
+        if _object_dict(step).get("status") == "degraded"
+    ]
+    skipped_steps = [
+        name
+        for name, step in steps.items()
+        if _object_dict(step).get("status") == "skipped"
+    ]
+    context_step = _object_dict(steps.get("build_context"))
+    feedback_step = _object_dict(steps.get("record_context_feedback"))
+    citation_step = _object_dict(steps.get("record_agent_citations"))
+    maintenance_step = _object_dict(steps.get("maintenance_cycle"))
+    result = _object_dict(maintenance_step.get("result"))
+    maintenance_summary = _object_dict(result.get("summary"))
+    return {
+        "degraded_steps": degraded_steps,
+        "skipped_steps": skipped_steps,
+        "context_included_count": (
+            context_step.get("included_count", 0)
+        ),
+        "context_feedback_count": (
+            feedback_step.get("count", 0)
+        ),
+        "agent_citation_count": (
+            citation_step.get("count", 0)
+        ),
+        "maintenance_summary": maintenance_summary,
+    }
+
+
+def _last_message_content(messages: Sequence[dict[str, object]]) -> str | None:
+    for message in reversed(messages):
+        content = str(message.get("content", "")).strip()
+        if content:
+            return content
+    return None
 
 
 def _empty_review_action_application(
@@ -1219,8 +2086,8 @@ def _review_plan_already_applied(
         metadata = dict(memory.metadata) if memory is not None else {}
     elif plan.target_type == "graph_edge":
         edge = store.get_graph_edge(plan.target_id)
-        edge_metadata = edge.get("metadata", {}) if edge is not None else {}
-        metadata = dict(edge_metadata) if isinstance(edge_metadata, dict) else {}
+        edge_metadata = edge.get("metadata") if edge is not None else None
+        metadata = _object_dict(edge_metadata)
     return metadata.get("review_action_id") == plan.id
 
 

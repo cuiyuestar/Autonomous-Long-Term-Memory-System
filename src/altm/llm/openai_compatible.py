@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 from urllib import error, request
 
 from altm.contracts import LLMConfig
@@ -14,7 +14,7 @@ class OpenAICompatibleClient:
     def __init__(self, config: LLMConfig) -> None:
         self.config = config
 
-    def chat_json(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    def chat_json(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         url = self.config.base_url.rstrip("/") + "/chat/completions"
         payload = {
             "model": self.config.model,
@@ -47,18 +47,32 @@ class OpenAICompatibleClient:
         return json.loads(content)
 
 
-def llm_config_from_env() -> LLMConfig:
+def llm_config_from_env(stage: str | None = None) -> LLMConfig:
+    stage_prefix = "ALTM_%s_LLM" % stage.strip().upper() if stage else None
+    values = {
+        field: (
+            os.environ.get("%s_%s" % (stage_prefix, field))
+            if stage_prefix is not None
+            else None
+        )
+        or os.environ.get("ALTM_LLM_%s" % field)
+        for field in ("BASE_URL", "API_KEY", "MODEL", "TIMEOUT_SECONDS")
+    }
     missing = [
-        name
-        for name in ("ALTM_LLM_BASE_URL", "ALTM_LLM_API_KEY", "ALTM_LLM_MODEL")
-        if not os.environ.get(name)
+        (
+            "%s_%s or ALTM_LLM_%s" % (stage_prefix, field, field)
+            if stage_prefix is not None
+            else "ALTM_LLM_%s" % field
+        )
+        for field in ("BASE_URL", "API_KEY", "MODEL")
+        if not values[field]
     ]
     if missing:
         raise RuntimeError("Missing LLM environment variables: %s" % ", ".join(missing))
 
     return LLMConfig(
-        base_url=os.environ["ALTM_LLM_BASE_URL"],
-        api_key=os.environ["ALTM_LLM_API_KEY"],
-        model=os.environ["ALTM_LLM_MODEL"],
-        timeout_seconds=int(os.environ.get("ALTM_LLM_TIMEOUT_SECONDS", "60")),
+        base_url=str(values["BASE_URL"]),
+        api_key=str(values["API_KEY"]),
+        model=str(values["MODEL"]),
+        timeout_seconds=int(values["TIMEOUT_SECONDS"] or "60"),
     )
