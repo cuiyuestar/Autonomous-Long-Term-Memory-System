@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="930" viewBox="0 0 1200 930" role="img" aria-labelledby="title desc">
+  <title id="title">ALTM overall architecture</title>
+  <desc id="desc">Architecture of the ALTM autonomous long-term memory system, including the host turn protocol, layered memory evolution, hybrid recall, experience emergence, context governance, lifecycle feedback, model plane, and scoped SQLite storage.</desc>
+  <defs>
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-sky" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#0284c7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#4f46e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .title { font: 600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .eyebrow { font: 600 11px "SFMono-Regular", Consolas, "Liberation Mono", monospace; letter-spacing: 1.2px; fill: #0369a1; }
+      .section { font: 600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .node-title { font: 600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .node-sub { font: 400 11px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .mono { font: 600 11px "SFMono-Regular", Consolas, "Liberation Mono", monospace; fill: #334155; }
+      .micro { font: 400 10px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #64748b; }
+      .container { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; }
+      .sky { fill: #eff6ff; stroke: #38bdf8; stroke-width: 1.25; }
+      .indigo { fill: #eef2ff; stroke: #818cf8; stroke-width: 1.25; }
+      .mint { fill: #ecfdf5; stroke: #34d399; stroke-width: 1.25; }
+      .amber { fill: #fffbeb; stroke: #fbbf24; stroke-width: 1.25; }
+      .slate { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
+      .line { fill: none; stroke: #64748b; stroke-width: 1.25; marker-end: url(#arrow-slate); }
+      .line-sky { fill: none; stroke: #0284c7; stroke-width: 1.5; marker-end: url(#arrow-sky); }
+      .line-indigo { fill: none; stroke: #4f46e5; stroke-width: 1.5; marker-end: url(#arrow-indigo); }
+      .dashed { stroke-dasharray: 6 5; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="928" rx="20" fill="#ffffff" stroke="#cbd5e1"/>
+
+  <text x="40" y="38" class="eyebrow">ALTM / OVERALL ARCHITECTURE</text>
+  <text x="40" y="72" class="title">自主经验涌现与长期记忆演化</text>
+  <text x="40" y="96" class="subtitle">当前任务提供线索，记忆沿全文、向量与关系图路径被激活；引用和反馈继续改变后续生命周期。</text>
+
+  <rect x="40" y="118" width="1120" height="132" rx="12" class="container"/>
+  <rect x="40" y="118" width="4" height="132" rx="2" fill="#0ea5e9"/>
+  <text x="60" y="144" class="eyebrow">HOST &amp; TURN PROTOCOL</text>
+
+  <rect x="60" y="162" width="140" height="54" rx="8" class="sky"/>
+  <text x="130" y="184" text-anchor="middle" class="node-title">当前任务</text>
+  <text x="130" y="202" text-anchor="middle" class="node-sub">User / Tool input</text>
+
+  <rect x="230" y="162" width="150" height="54" rx="8" class="sky"/>
+  <text x="305" y="184" text-anchor="middle" class="node-title">prepare_turn</text>
+  <text x="305" y="202" text-anchor="middle" class="node-sub">capture + recall</text>
+
+  <rect x="410" y="162" width="150" height="54" rx="8" class="indigo"/>
+  <text x="485" y="184" text-anchor="middle" class="node-title">ContextBundle</text>
+  <text x="485" y="202" text-anchor="middle" class="node-sub">可追溯记忆上下文</text>
+
+  <rect x="590" y="162" width="140" height="54" rx="8" class="indigo"/>
+  <text x="660" y="184" text-anchor="middle" class="node-title">Host Agent</text>
+  <text x="660" y="202" text-anchor="middle" class="node-sub">reason + act</text>
+
+  <rect x="760" y="162" width="150" height="54" rx="8" class="sky"/>
+  <text x="835" y="184" text-anchor="middle" class="node-title">commit_turn</text>
+  <text x="835" y="202" text-anchor="middle" class="node-sub">assistant output</text>
+
+  <rect x="940" y="162" width="190" height="54" rx="8" class="mint"/>
+  <text x="1035" y="184" text-anchor="middle" class="node-title">引用与反馈</text>
+  <text x="1035" y="202" text-anchor="middle" class="node-sub">cited · helpful · harmful</text>
+
+  <path d="M200 189H230" class="line-sky"/>
+  <path d="M380 189H410" class="line-sky"/>
+  <path d="M560 189H590" class="line-indigo"/>
+  <path d="M730 189H760" class="line-indigo"/>
+  <path d="M910 189H940" class="line-sky"/>
+  <text x="60" y="237" class="micro">Adapters: Python · CLI · MCP stdio/HTTP · TypeScript SDK · OpenClaw · Hermes</text>
+
+  <rect x="40" y="278" width="390" height="350" rx="12" class="container"/>
+  <rect x="40" y="278" width="4" height="350" rx="2" fill="#6366f1"/>
+  <text x="60" y="306" class="eyebrow">MEMORY FORMATION</text>
+  <text x="60" y="328" class="section">短期交互到长期经验</text>
+
+  <rect x="65" y="350" width="140" height="48" rx="8" class="indigo"/>
+  <text x="135" y="370" text-anchor="middle" class="node-title">L0 原始记忆</text>
+  <text x="135" y="386" text-anchor="middle" class="node-sub">append-only messages</text>
+
+  <rect x="240" y="350" width="160" height="48" rx="8" class="slate"/>
+  <text x="320" y="370" text-anchor="middle" class="node-title">持久化任务队列</text>
+  <text x="320" y="386" text-anchor="middle" class="node-sub">lease · retry · checkpoint</text>
+
+  <rect x="65" y="430" width="140" height="48" rx="8" class="indigo"/>
+  <text x="135" y="450" text-anchor="middle" class="node-title">L1 会话胶囊</text>
+  <text x="135" y="466" text-anchor="middle" class="node-sub">constraints · decisions</text>
+
+  <rect x="240" y="430" width="160" height="48" rx="8" class="indigo"/>
+  <text x="320" y="450" text-anchor="middle" class="node-title">L2 原子事实</text>
+  <text x="320" y="466" text-anchor="middle" class="node-sub">typed atoms + evidence</text>
+
+  <rect x="58" y="530" width="110" height="58" rx="8" class="indigo"/>
+  <text x="113" y="552" text-anchor="middle" class="node-title">关系图</text>
+  <text x="113" y="570" text-anchor="middle" class="node-sub">Entity · Time</text>
+
+  <rect x="181" y="530" width="110" height="58" rx="8" class="indigo"/>
+  <text x="236" y="552" text-anchor="middle" class="node-title">L3 场景</text>
+  <text x="236" y="570" text-anchor="middle" class="node-sub">cross-session</text>
+
+  <rect x="304" y="530" width="110" height="58" rx="8" class="indigo"/>
+  <text x="359" y="552" text-anchor="middle" class="node-title">L4 画像</text>
+  <text x="359" y="570" text-anchor="middle" class="node-sub">stable persona</text>
+
+  <path d="M205 374H240" class="line"/>
+  <path d="M320 398V414H135V430" class="line"/>
+  <path d="M205 454H240" class="line-indigo"/>
+  <path d="M320 478V502H113V530" class="line-indigo"/>
+  <path d="M320 478V502H236V530" class="line-indigo"/>
+  <path d="M320 478V530" class="line-indigo"/>
+  <text x="60" y="611" class="micro">LLM 抽取 · evidence gate · typed table 双写</text>
+
+  <rect x="455" y="278" width="360" height="350" rx="12" class="container"/>
+  <rect x="455" y="278" width="4" height="350" rx="2" fill="#6366f1"/>
+  <text x="475" y="306" class="eyebrow">RECALL &amp; EMERGENCE</text>
+  <text x="475" y="328" class="section">线索触发的关联经验涌现</text>
+
+  <rect x="555" y="350" width="160" height="46" rx="8" class="sky"/>
+  <text x="635" y="369" text-anchor="middle" class="node-title">当前问题</text>
+  <text x="635" y="385" text-anchor="middle" class="node-sub">query seeds</text>
+
+  <rect x="475" y="430" width="95" height="48" rx="8" class="slate"/>
+  <text x="522.5" y="451" text-anchor="middle" class="node-title">FTS5</text>
+  <text x="522.5" y="467" text-anchor="middle" class="node-sub">unicode/trigram</text>
+
+  <rect x="587" y="430" width="95" height="48" rx="8" class="slate"/>
+  <text x="634.5" y="451" text-anchor="middle" class="node-title">Vector</text>
+  <text x="634.5" y="467" text-anchor="middle" class="node-sub">local/sqlite-vec</text>
+
+  <rect x="699" y="430" width="95" height="48" rx="8" class="slate"/>
+  <text x="746.5" y="451" text-anchor="middle" class="node-title">Graph PPR</text>
+  <text x="746.5" y="467" text-anchor="middle" class="node-sub">scoped paths</text>
+
+  <rect x="555" y="500" width="160" height="48" rx="8" class="sky"/>
+  <text x="635" y="520" text-anchor="middle" class="node-title">标准 RRF 融合</text>
+  <text x="635" y="536" text-anchor="middle" class="node-sub">tie-aware ranking</text>
+
+  <rect x="520" y="570" width="230" height="42" rx="8" class="indigo"/>
+  <text x="635" y="588" text-anchor="middle" class="node-title">自主经验涌现</text>
+  <text x="635" y="603" text-anchor="middle" class="node-sub">seed → weighted graph expansion</text>
+
+  <path d="M635 396V414H522V430" class="line"/>
+  <path d="M635 396V430" class="line"/>
+  <path d="M635 414H746V430" class="line"/>
+  <path d="M522 478V488H635V500" class="line-sky"/>
+  <path d="M634 478V500" class="line-sky"/>
+  <path d="M746 478V488H635V500" class="line-sky"/>
+  <path d="M635 548V570" class="line-indigo dashed"/>
+  <path d="M430 500H455" class="line-indigo dashed"/>
+
+  <rect x="840" y="278" width="320" height="350" rx="12" class="container"/>
+  <rect x="840" y="278" width="4" height="350" rx="2" fill="#0ea5e9"/>
+  <text x="860" y="306" class="eyebrow">CONTEXT GOVERNANCE</text>
+  <text x="860" y="328" class="section">有限 Prompt 中的可逆上下文</text>
+
+  <rect x="870" y="350" width="260" height="48" rx="8" class="sky"/>
+  <text x="1000" y="370" text-anchor="middle" class="node-title">Context Gateway</text>
+  <text x="1000" y="386" text-anchor="middle" class="node-sub">assemble ranked memories</text>
+
+  <rect x="870" y="425" width="260" height="44" rx="8" class="slate"/>
+  <text x="1000" y="443" text-anchor="middle" class="node-title">Token budget + candidate limits</text>
+  <text x="1000" y="458" text-anchor="middle" class="node-sub">任务相关性与预算约束</text>
+
+  <rect x="870" y="496" width="260" height="44" rx="8" class="sky"/>
+  <text x="1000" y="514" text-anchor="middle" class="node-title">ContentRouter</text>
+  <text x="1000" y="529" text-anchor="middle" class="node-sub">JSON · code · log · natural</text>
+
+  <rect x="870" y="567" width="260" height="44" rx="8" class="mint"/>
+  <text x="1000" y="585" text-anchor="middle" class="node-title">CCR + stable marker</text>
+  <text x="1000" y="600" text-anchor="middle" class="node-sub">compressed context ↔ original evidence</text>
+
+  <path d="M1000 398V425" class="line-sky"/>
+  <path d="M1000 469V496" class="line-sky"/>
+  <path d="M1000 540V567" class="line-sky"/>
+  <path d="M715 524H825V374H870" class="line-sky"/>
+  <path d="M750 591H825V390H870" class="line-indigo dashed"/>
+  <text x="855" y="621" class="micro">memory_drilldown(marker, query?)</text>
+
+  <path d="M305 216V268H135V350" class="line-sky"/>
+  <path d="M305 268H635V350" class="line-sky"/>
+  <path d="M1000 350V266H485V216" class="line-sky"/>
+
+  <rect x="40" y="655" width="775" height="132" rx="12" class="container"/>
+  <rect x="40" y="655" width="4" height="132" rx="2" fill="#10b981"/>
+  <text x="60" y="682" class="eyebrow">LIFECYCLE &amp; AUTONOMOUS GOVERNANCE</text>
+
+  <rect x="60" y="704" width="155" height="54" rx="8" class="mint"/>
+  <text x="137.5" y="725" text-anchor="middle" class="node-title">真实使用信号</text>
+  <text x="137.5" y="743" text-anchor="middle" class="node-sub">injected ≠ cited</text>
+
+  <rect x="245" y="704" width="155" height="54" rx="8" class="mint"/>
+  <text x="322.5" y="725" text-anchor="middle" class="node-title">生命周期评分</text>
+  <text x="322.5" y="743" text-anchor="middle" class="node-sub">age · access · evidence</text>
+
+  <rect x="430" y="704" width="165" height="54" rx="8" class="mint"/>
+  <text x="512.5" y="725" text-anchor="middle" class="node-title">自治语义治理</text>
+  <text x="512.5" y="743" text-anchor="middle" class="node-sub">reranker · NLI · rubric</text>
+
+  <rect x="625" y="704" width="165" height="54" rx="8" class="mint"/>
+  <text x="707.5" y="725" text-anchor="middle" class="node-title">记忆状态迁移</text>
+  <text x="707.5" y="743" text-anchor="middle" class="node-sub">promote · demote · retain</text>
+
+  <path d="M215 731H245" class="line"/>
+  <path d="M400 731H430" class="line"/>
+  <path d="M595 731H625" class="line"/>
+  <path d="M790 731H865" class="line"/>
+  <path d="M1035 216H1170V640H815V731H790" class="line"/>
+
+  <rect x="840" y="655" width="320" height="220" rx="12" class="container"/>
+  <rect x="840" y="655" width="4" height="220" rx="2" fill="#f59e0b"/>
+  <text x="860" y="682" class="eyebrow">SCOPED SQLITE STORAGE</text>
+
+  <rect x="865" y="704" width="125" height="52" rx="8" class="amber"/>
+  <text x="927.5" y="725" text-anchor="middle" class="node-title">Memory units</text>
+  <text x="927.5" y="742" text-anchor="middle" class="node-sub">L0-L4 typed data</text>
+
+  <rect x="1010" y="704" width="125" height="52" rx="8" class="amber"/>
+  <text x="1072.5" y="725" text-anchor="middle" class="node-title">Search index</text>
+  <text x="1072.5" y="742" text-anchor="middle" class="node-sub">FTS5 · sqlite-vec</text>
+
+  <rect x="865" y="775" width="125" height="52" rx="8" class="amber"/>
+  <text x="927.5" y="796" text-anchor="middle" class="node-title">Graph + CCR</text>
+  <text x="927.5" y="813" text-anchor="middle" class="node-sub">evidence · original</text>
+
+  <rect x="1010" y="775" width="125" height="52" rx="8" class="amber"/>
+  <text x="1072.5" y="796" text-anchor="middle" class="node-title">Runtime state</text>
+  <text x="1072.5" y="813" text-anchor="middle" class="node-sub">jobs · cycles · audit</text>
+
+  <rect x="865" y="842" width="270" height="22" rx="6" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="1000" y="857" text-anchor="middle" class="micro">tenant / workspace / user / agent isolation</text>
+
+  <rect x="40" y="810" width="775" height="65" rx="12" class="container"/>
+  <text x="60" y="836" class="eyebrow">OPENAI-COMPATIBLE MODEL PLANE</text>
+  <text x="60" y="858" class="mono">L1 · L2 · Graph · Reranker · NLI · Scope · L3 · L4 · Governance · Headroom · Embeddings</text>
+
+  <rect x="40" y="894" width="1120" height="20" rx="6" fill="#f8fafc"/>
+  <text x="600" y="908" text-anchor="middle" class="micro">L0-L3 默认 Agent 私有 · L4 在同 tenant/workspace/user 内共享 · P0 语义动作 fail-closed</text>
+</svg>
