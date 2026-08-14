@@ -1,0 +1,35 @@
+- insert:
+    - id: altm-memory-client
+      name: '@altm/deepseek-harness'
+
+    - id: altm-memory
+      name: 'cordis:group'
+      group: true
+      config:
+        - id: provider
+          name: '@altm/deepseek-harness/provider'
+          config:
+            endpoint: !!js process.env.ALTM_MCP_ENDPOINT || 'http://127.0.0.1:8000/mcp'
+            apiKeyEnv: !!js process.env.ALTM_MCP_API_KEY_ENV || 'ALTM_MCP_API_KEY'
+            timeoutMs: 15000
+            requestAttempts: 2
+        - id: consumer
+          name: '@altm/deepseek-harness/consumer'
+          config:
+            tenantId: !!js process.env.ALTM_TENANT_ID || 'local'
+            workspaceId: !!js process.env.ALTM_WORKSPACE_ID || undefined
+            userId: !!js process.env.ALTM_USER_ID || process.env.USER || 'local'
+            agentId: !!js process.env.ALTM_AGENT_ID || 'deepseek-harness'
+            tokenBudget: 1200
+            recallLimit: 10
+            activeLimit: 5
+            strictSession: false
+        - id: ui-host
+          name: '@altm/deepseek-harness/ui-host'
+          config:
+            endpoint: !!js process.env.ALTM_MCP_ENDPOINT || 'http://127.0.0.1:8000/mcp'
+            apiKeyEnv: !!js process.env.ALTM_MCP_API_KEY_ENV || 'ALTM_MCP_API_KEY'
+            tenantId: !!js process.env.ALTM_TENANT_ID || 'local'
+            workspaceId: !!js process.env.ALTM_WORKSPACE_ID || undefined
+            userId: !!js process.env.ALTM_USER_ID || process.env.USER || 'local'
+            agentId: !!js process.env.ALTM_AGENT_ID || 'deepseek-harness'

@@ -143,6 +143,68 @@ class SQLiteSchemaTest(unittest.TestCase):
             )
             self.assertTrue({"runtime_cycles", "runtime_jobs"} <= tables)
 
+    def test_initialize_migrates_runtime_cycle_abort_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "legacy-cycle.sqlite3"
+            with sqlite3.connect(db_path) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE runtime_cycles (
+                      id TEXT PRIMARY KEY,
+                      tenant_id TEXT NOT NULL,
+                      workspace_id TEXT NOT NULL,
+                      user_id TEXT NOT NULL,
+                      agent_id TEXT NOT NULL,
+                      session_id TEXT NOT NULL,
+                      turn_id TEXT NOT NULL,
+                      user_memory_id TEXT NOT NULL,
+                      user_content_hash TEXT NOT NULL,
+                      query TEXT NOT NULL,
+                      context_json TEXT NOT NULL,
+                      context_memory_ids_json TEXT NOT NULL DEFAULT '[]',
+                      status TEXT NOT NULL
+                        CHECK (status IN ('prepared', 'committed', 'failed')),
+                      assistant_memory_id TEXT,
+                      assistant_content_hash TEXT,
+                      cited_memory_ids_json TEXT NOT NULL DEFAULT '[]',
+                      metadata_json TEXT NOT NULL DEFAULT '{}',
+                      created_at TEXT NOT NULL,
+                      updated_at TEXT NOT NULL,
+                      UNIQUE (
+                        tenant_id, workspace_id, user_id, agent_id,
+                        session_id, turn_id
+                      )
+                    )
+                    """
+                )
+                connection.commit()
+
+            SQLiteMemoryStore(db_path).initialize()
+
+            with sqlite3.connect(db_path) as connection:
+                table_sql = connection.execute(
+                    """
+                    SELECT sql FROM sqlite_master
+                    WHERE type = 'table' AND name = 'runtime_cycles'
+                    """
+                ).fetchone()[0]
+                connection.execute(
+                    """
+                    INSERT INTO runtime_cycles(
+                      id, tenant_id, workspace_id, user_id, agent_id,
+                      session_id, turn_id, user_memory_id, user_content_hash,
+                      query, context_json, status, created_at, updated_at
+                    )
+                    VALUES (
+                      'cycle-1', 'tenant', 'workspace', 'user', 'agent',
+                      'session', 'turn-1', 'missing-memory', 'hash',
+                      'query', '{"items":[]}', 'aborted', 'now', 'now'
+                    )
+                    """
+                )
+                connection.commit()
+            self.assertIn("'aborted'", table_sql)
+
     def test_put_memory_unit_empty_evidence_refs_clears_existing_refs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")

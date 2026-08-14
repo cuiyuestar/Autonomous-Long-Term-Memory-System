@@ -89,7 +89,35 @@ altm commit-turn \
 
 相同内容和引用集合可以安全重试；改变内容或引用集合会触发幂等冲突。
 
-## 5. Worker
+## 5. Abort
+
+Host turn 未产生可提交的 Assistant 回复时调用：
+
+```text
+altm abort-turn \
+  --db ./data/altm.sqlite3 \
+  --tenant-id tenant-1 \
+  --workspace-id workspace-1 \
+  --user-id user-1 \
+  --agent-id agent-1 \
+  --cycle-id <cycle_id> \
+  --reason host-turn-aborted
+```
+
+`abort_turn` 将 cycle 从 prepared 原子转换为 aborted。它不删除已经捕获的用户
+L0，不撤销 injected 信号，也不取消用户输入触发的异步折叠任务；它只声明该
+Host turn 不会再提交 Assistant L0。相同 reason 可以安全重试，改变 reason
+会触发幂等冲突。committed 与 aborted 都是终态，不能互相转换。
+
+Host 应在 turn 失败、没有最终 Assistant 文本或记忆 Consumer 卸载时 abort。
+prepare、commit 和 abort 共同构成：
+
+```text
+prepared -> committed
+prepared -> aborted
+```
+
+## 6. Worker
 
 后台 worker 使用 SQLite lease，进程异常后任务可重新领取：
 
@@ -132,7 +160,7 @@ semantic_l4 -> lifecycle -> retention
 压力决定晋升/降级，并写入 age table。L0 默认永久；配置 TTL 或显式用户删除
 会经过 deletion request、tombstone、索引清理和 evidence fallback 修复。
 
-## 6. MCP
+## 7. MCP
 
 普通 Agent 使用安全工具面：
 
@@ -145,6 +173,7 @@ altm mcp-server --db ./data/altm.sqlite3 --profile runtime
 ```text
 memory_prepare_turn
 memory_commit_turn
+memory_abort_turn
 memory_mvp_chat
 memory_drilldown
 memory_feedback
@@ -161,7 +190,7 @@ altm mcp-server --db ./data/altm.sqlite3 --profile admin
 
 `memory_mvp_chat` 是弃用兼容包装，必须传入 Host Agent 的真实 `assistant_content` 和真实 `cited_memory_ids`。新接入必须使用 prepare/commit。
 
-## 7. Headroom 与 CCR
+## 8. Headroom 与 CCR
 
 Context Gateway 默认启用内置 ContentRouter：
 
@@ -173,7 +202,7 @@ Context Gateway 默认启用内置 ContentRouter：
 压缩前原文写入 SQLite CCR。`memory_drilldown` 可直接接受
 `memory://<id>#<hash>`，也可附带 query 只检索原文匹配行。
 
-## 8. Streamable HTTP 认证
+## 9. Streamable HTTP 认证
 
 stdio 是本地可信模式。SSE 和 Streamable HTTP 必须配置：
 

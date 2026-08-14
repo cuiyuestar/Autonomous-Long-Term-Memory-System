@@ -129,6 +129,80 @@ def create_mcp_server(
         )
 
     @app.tool()
+    def memory_abort_turn(
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        cycle_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        return _model_json(
+            service.abort_turn(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                cycle_id=cycle_id,
+                reason=reason,
+            )
+        )
+
+    @app.tool()
+    def memory_ui_graph_seeds(
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        query: str | None = None,
+        limit: int = 24,
+    ) -> list[dict[str, object]]:
+        return service.ui_graph_seeds(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+            query=query,
+            limit=limit,
+        )
+
+    @app.tool()
+    def memory_ui_graph_neighborhood(
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        seed_node_ids: list[str],
+        max_hops: int = 2,
+        node_limit: int = 120,
+    ) -> dict[str, object]:
+        return service.ui_graph_neighborhood(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+            seed_node_ids=seed_node_ids,
+            max_hops=max_hops,
+            node_limit=node_limit,
+        )
+
+    @app.tool()
+    def memory_ui_layers(
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        limit_per_layer: int = 80,
+    ) -> dict[str, object]:
+        return service.ui_memory_layers(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+            limit_per_layer=limit_per_layer,
+        )
+
+    @app.tool()
     def memory_remember(
         session_id: str,
         content: str,
@@ -892,6 +966,10 @@ def create_mcp_server(
         runtime_tools = {
             "memory_prepare_turn",
             "memory_commit_turn",
+            "memory_abort_turn",
+            "memory_ui_graph_seeds",
+            "memory_ui_graph_neighborhood",
+            "memory_ui_layers",
             "memory_mvp_chat",
             "memory_drilldown",
             "memory_feedback",

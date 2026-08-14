@@ -489,7 +489,7 @@ CREATE TABLE IF NOT EXISTS runtime_cycles (
   query TEXT NOT NULL,
   context_json TEXT NOT NULL,
   context_memory_ids_json TEXT NOT NULL DEFAULT '[]',
-  status TEXT NOT NULL CHECK (status IN ('prepared', 'committed', 'failed')),
+  status TEXT NOT NULL CHECK (status IN ('prepared', 'committed', 'aborted', 'failed')),
   assistant_memory_id TEXT,
   assistant_content_hash TEXT,
   cited_memory_ids_json TEXT NOT NULL DEFAULT '[]',

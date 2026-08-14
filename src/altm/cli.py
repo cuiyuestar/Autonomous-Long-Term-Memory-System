@@ -86,6 +86,14 @@ def build_parser() -> argparse.ArgumentParser:
     commit_turn.add_argument("--assistant-message-id")
     commit_turn.add_argument("--cited-memory-id", action="append")
 
+    abort_turn = subparsers.add_parser(
+        "abort-turn",
+        help="Terminate a prepared Host turn without an Assistant response",
+    )
+    _add_scope_arguments(abort_turn)
+    abort_turn.add_argument("--cycle-id", required=True)
+    abort_turn.add_argument("--reason", required=True)
+
     pin_memory = subparsers.add_parser(
         "pin-memory",
         help="Pin or unpin a scoped memory as an explicit user signal",
@@ -759,6 +767,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                     assistant_content=args.assistant_content,
                     cited_memory_ids=args.cited_memory_id or [],
                     assistant_message_id=args.assistant_message_id,
+                )
+            )
+        )
+        return 0
+
+    if args.command == "abort-turn":
+        _dump(
+            _model_json(
+                app.abort_turn(
+                    tenant_id=args.tenant_id,
+                    workspace_id=args.workspace_id,
+                    user_id=args.user_id,
+                    agent_id=args.agent_id,
+                    cycle_id=args.cycle_id,
+                    reason=args.reason,
                 )
             )
         )

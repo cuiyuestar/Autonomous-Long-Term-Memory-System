@@ -1,4 +1,6 @@
 export type {
+  AbortedTurn,
+  AbortTurnInput,
   AccessSignal,
   CaptureInput,
   CommitTurnInput,
@@ -42,6 +44,7 @@ export {
   scope
 } from "./coordinator.js";
 export type {
+  AbortHostTurnInput,
   CommitHostTurnInput,
   PreparedHostTurn
 } from "./coordinator.js";

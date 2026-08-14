@@ -1,0 +1,109 @@
+{
+  "name": "@altm/deepseek-harness",
+  "version": "1.0.0",
+  "description": "Replaceable long-term-memory capability, ALTM provider, and DeepSeek Harness consumer",
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/types/root.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/root.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./consumer": {
+      "types": "./lib/types/index.d.ts",
+      "import": "./lib/consumer.js"
+    },
+    "./memory": {
+      "types": "./lib/types/memory.d.ts",
+      "import": "./lib/memory.js"
+    },
+    "./provider": {
+      "types": "./lib/types/provider.d.ts",
+      "import": "./lib/provider.js"
+    },
+    "./ui-host": {
+      "types": "./lib/types/ui-host.d.ts",
+      "import": "./lib/ui-host.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "sideEffects": true,
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.json --emitDeclarationOnly",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:e2e": "../../.venv/bin/python tests/run_e2e.py",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "three": "^0.179.1",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1",
+    "@deepseek-ai/dsh-agent": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-locale": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-runtime": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-host-webserver": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.5",
+    "@deepseek-ai/dsh-session": ">=0.1.0-rc.5",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@altm/sdk": "file:../typescript",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+    "@types/node": "^22.0.0",
+    "@types/react": "~18.3.1",
+    "@types/three": "^0.179.0",
+    "esbuild": "^0.25.0",
+    "lightningcss": "^1.30.1",
+    "react": "^18.2.0",
+    "typescript": "^6.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System.git",
+    "directory": "adapters/deepseek-harness"
+  }
+}

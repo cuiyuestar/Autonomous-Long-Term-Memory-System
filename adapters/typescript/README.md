@@ -38,6 +38,16 @@ await coordinator.commit({
 });
 ```
 
+When the Host turn ends without a final Assistant response, settle it instead
+of leaving a prepared cycle:
+
+```ts
+await coordinator.abort({
+  prepared: turn.prepared,
+  reason: "host-turn-aborted"
+});
+```
+
 `commit()` only infers citations from `memory://...` markers present in the
 assistant output. Hosts with structured citation data should pass explicit
-`citedMemoryIds`.
+`citedMemoryIds`. `abort()` is terminal and idempotent for the same reason.

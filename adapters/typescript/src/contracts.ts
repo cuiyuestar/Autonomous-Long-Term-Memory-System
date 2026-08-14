@@ -243,6 +243,22 @@ export interface CommittedTurn {
   metadata: Record<string, unknown>;
 }
 
+export interface AbortTurnInput {
+  scope: MemoryScope;
+  cycleId: string;
+  reason: string;
+}
+
+export interface AbortedTurn {
+  cycleId: string;
+  scope: MemoryScope;
+  sessionId: string;
+  turnId: string;
+  reason: string;
+  status: string;
+  metadata: Record<string, unknown>;
+}
+
 export interface SceneBlock {
   id: string;
   title: string;

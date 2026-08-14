@@ -1,4 +1,5 @@
 import type {
+  AbortedTurn,
   CommittedTurn,
   MemoryScope,
   PrepareTurnInput,
@@ -16,6 +17,11 @@ export interface CommitHostTurnInput {
   assistantContent: string;
   assistantMessageId?: string;
   citedMemoryIds?: string[];
+}
+
+export interface AbortHostTurnInput {
+  prepared: PreparedTurn;
+  reason: string;
 }
 
 export class AltmTurnCoordinator {
@@ -41,6 +47,14 @@ export class AltmTurnCoordinator {
       ...(input.assistantMessageId
         ? { assistantMessageId: input.assistantMessageId }
         : {})
+    });
+  }
+
+  async abort(input: AbortHostTurnInput): Promise<AbortedTurn> {
+    return this.client.abortTurn({
+      scope: input.prepared.scope,
+      cycleId: input.prepared.cycleId,
+      reason: input.reason
     });
   }
 

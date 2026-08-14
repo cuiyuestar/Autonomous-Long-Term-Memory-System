@@ -306,7 +306,66 @@ class SQLiteMemoryStore:
         connection.enable_load_extension(False)
         return connection
 
+    def _ensure_runtime_cycle_statuses(
+        self,
+        connection: sqlite3.Connection,
+    ) -> None:
+        row = connection.execute(
+            """
+            SELECT sql FROM sqlite_master
+            WHERE type = 'table' AND name = 'runtime_cycles'
+            """
+        ).fetchone()
+        if row is None or "'aborted'" in str(row[0]):
+            return
+        connection.executescript(
+            """
+            CREATE TABLE runtime_cycles_next (
+              id TEXT PRIMARY KEY,
+              tenant_id TEXT NOT NULL,
+              workspace_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              agent_id TEXT NOT NULL,
+              session_id TEXT NOT NULL,
+              turn_id TEXT NOT NULL,
+              user_memory_id TEXT NOT NULL,
+              user_content_hash TEXT NOT NULL,
+              query TEXT NOT NULL,
+              context_json TEXT NOT NULL,
+              context_memory_ids_json TEXT NOT NULL DEFAULT '[]',
+              status TEXT NOT NULL
+                CHECK (status IN ('prepared', 'committed', 'aborted', 'failed')),
+              assistant_memory_id TEXT,
+              assistant_content_hash TEXT,
+              cited_memory_ids_json TEXT NOT NULL DEFAULT '[]',
+              metadata_json TEXT NOT NULL DEFAULT '{}',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE (
+                tenant_id, workspace_id, user_id, agent_id,
+                session_id, turn_id
+              ),
+              FOREIGN KEY (user_memory_id)
+                REFERENCES memory_units(id) ON DELETE RESTRICT,
+              FOREIGN KEY (assistant_memory_id)
+                REFERENCES memory_units(id) ON DELETE RESTRICT
+            );
+            INSERT INTO runtime_cycles_next
+            SELECT * FROM runtime_cycles;
+            DROP TABLE runtime_cycles;
+            ALTER TABLE runtime_cycles_next RENAME TO runtime_cycles;
+            CREATE INDEX idx_runtime_cycles_scope_session
+              ON runtime_cycles(
+                tenant_id, workspace_id, user_id, agent_id,
+                session_id, created_at
+              );
+            CREATE INDEX idx_runtime_cycles_status
+              ON runtime_cycles(status, updated_at);
+            """
+        )
+
     def _ensure_schema_compatibility(self, connection: sqlite3.Connection) -> None:
+        self._ensure_runtime_cycle_statuses(connection)
         columns = {
             row[1]
             for row in connection.execute("PRAGMA table_info(memory_units)").fetchall()
@@ -726,6 +785,61 @@ class SQLiteMemoryStore:
                 self._row_to_memory_unit(row, self._load_evidence_refs(connection, row["id"]))
                 for row in rows
             ]
+
+    def list_recent_memory_units(
+        self,
+        layers: Sequence[MemoryLayer],
+        limit_per_layer: int = 80,
+    ) -> dict[str, Sequence[MemoryUnit]]:
+        if limit_per_layer <= 0:
+            return {layer.value: [] for layer in layers}
+        result: dict[str, Sequence[MemoryUnit]] = {}
+        with self.connect() as connection:
+            for layer in dict.fromkeys(layers):
+                rows = connection.execute(
+                    """
+                    SELECT * FROM memory_units
+                    WHERE status != 'deleted'%s
+                      AND layer = ?
+                    ORDER BY updated_at DESC, id ASC
+                    LIMIT ?
+                    """
+                    % self._memory_scope_sql(),
+                    (*self._memory_scope_params(), layer.value, limit_per_layer),
+                ).fetchall()
+                result[layer.value] = [
+                    self._row_to_memory_unit(
+                        row,
+                        self._load_evidence_refs(connection, row["id"]),
+                    )
+                    for row in rows
+                ]
+        return result
+
+    def memory_layer_counts(
+        self,
+        layers: Sequence[MemoryLayer],
+    ) -> dict[str, int]:
+        requested = list(dict.fromkeys(layers))
+        counts = {layer.value: 0 for layer in requested}
+        if not requested:
+            return counts
+        placeholders = ", ".join("?" for _ in requested)
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT layer, COUNT(*) AS count
+                FROM memory_units
+                WHERE status != 'deleted'%s
+                  AND layer IN (%s)
+                GROUP BY layer
+                """
+                % (self._memory_scope_sql(), placeholders),
+                (*self._memory_scope_params(), *(layer.value for layer in requested)),
+            ).fetchall()
+        for row in rows:
+            counts[str(row["layer"])] = int(row["count"])
+        return counts
 
     def list_l0_by_session(self, session_id: str, limit: int = 200) -> Sequence[MemoryUnit]:
         with self.connect() as connection:
@@ -1243,6 +1357,10 @@ class SQLiteMemoryStore:
                     raise ValueError(
                         "Turn idempotency conflict: input changed for turn %s" % turn_id
                     )
+                if existing["status"] == "aborted":
+                    raise ValueError(
+                        "Turn cycle was already aborted: %s" % turn_id
+                    )
                 connection.rollback()
                 return existing
 
@@ -1345,6 +1463,11 @@ class SQLiteMemoryStore:
                     )
                 connection.rollback()
                 return existing
+            if existing["status"] != "prepared":
+                raise ValueError(
+                    "Cannot commit runtime cycle %s with status %s"
+                    % (cycle_id, existing["status"])
+                )
 
             allowed_ids = set(_string_list(existing["context_memory_ids"]))
             invalid_ids = [memory_id for memory_id in cited_ids if memory_id not in allowed_ids]
@@ -1399,6 +1522,71 @@ class SQLiteMemoryStore:
         if committed is None:
             raise RuntimeError("Failed to load committed runtime cycle: %s" % cycle_id)
         return committed
+
+    def abort_runtime_cycle(
+        self,
+        cycle_id: str,
+        reason: str,
+        metadata: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        scope = self._required_active_scope()
+        normalized_reason = reason.strip()
+        if not normalized_reason:
+            raise ValueError("Runtime cycle abort reason must not be empty")
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT * FROM runtime_cycles
+                WHERE id = ?
+                  AND tenant_id = ? AND workspace_id = ?
+                  AND user_id = ? AND agent_id = ?
+                """,
+                (cycle_id, *scope.key_parts()),
+            ).fetchone()
+            if row is None:
+                raise ValueError("Unknown runtime cycle: %s" % cycle_id)
+
+            existing = self._runtime_cycle_row(row)
+            existing_metadata = _object_dict(existing["metadata"])
+            if existing["status"] == "aborted":
+                if existing_metadata.get("abort_reason") != normalized_reason:
+                    raise ValueError(
+                        "Turn abort idempotency conflict for cycle %s" % cycle_id
+                    )
+                connection.rollback()
+                return existing
+            if existing["status"] != "prepared":
+                raise ValueError(
+                    "Cannot abort runtime cycle %s with status %s"
+                    % (cycle_id, existing["status"])
+                )
+
+            existing_metadata.update(metadata or {})
+            existing_metadata["abort_reason"] = normalized_reason
+            connection.execute(
+                """
+                UPDATE runtime_cycles
+                SET status = 'aborted',
+                    metadata_json = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(
+                        existing_metadata,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                    utc_now_iso(),
+                    cycle_id,
+                ),
+            )
+            connection.commit()
+        aborted = self.get_runtime_cycle(cycle_id)
+        if aborted is None:
+            raise RuntimeError("Failed to load aborted runtime cycle: %s" % cycle_id)
+        return aborted
 
     def enqueue_job(
         self,
@@ -2357,6 +2545,36 @@ class SQLiteMemoryStore:
                 node["match_rank"] = float(row["match_rank"])
                 result.append(node)
             return result
+
+    def list_recent_graph_nodes(
+        self,
+        limit: int = 24,
+    ) -> Sequence[dict[str, object]]:
+        if limit <= 0:
+            return []
+        scope = self._required_active_scope()
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT *
+                FROM graph_nodes
+                WHERE tenant_id = ?
+                  AND workspace_id = ?
+                  AND user_id = ?
+                  AND agent_id = ?
+                ORDER BY updated_at DESC, id ASC
+                LIMIT ?
+                """,
+                (*scope.key_parts(), limit),
+            ).fetchall()
+            evidence = _graph_evidence_map(
+                connection,
+                [str(row["id"]) for row in rows],
+            )
+            return [
+                _row_to_graph_node(row, evidence.get(str(row["id"]), ()))
+                for row in rows
+            ]
 
     def get_graph_subgraph(
         self,

@@ -11,6 +11,7 @@ from altm.capture import L0Recorder
 from altm.config import HighRiskFlags, high_risk_flags
 from altm.context import ContentRouter, SimpleContextFusion, SimpleContextGateway
 from altm.contracts import (
+    AbortedTurn,
     AccessSignal,
     ActiveWindowReport,
     CaptureInput,
@@ -284,6 +285,119 @@ class AltmApplication:
             status=str(committed["status"]),
             metadata=_object_dict(committed["metadata"]),
         )
+
+    def abort_turn(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        cycle_id: str,
+        reason: str,
+    ) -> AbortedTurn:
+        scope = MemoryScope(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            agent_id=agent_id,
+        )
+        aborted = self.store(scope).abort_runtime_cycle(
+            cycle_id=cycle_id,
+            reason=reason,
+            metadata={"protocol": "prepare_commit_v1"},
+        )
+        metadata = _object_dict(aborted["metadata"])
+        return AbortedTurn(
+            cycle_id=cycle_id,
+            scope=scope,
+            session_id=str(aborted["session_id"]),
+            turn_id=str(aborted["turn_id"]),
+            reason=str(metadata["abort_reason"]),
+            status=str(aborted["status"]),
+            metadata=metadata,
+        )
+
+    def ui_graph_seeds(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        query: str | None = None,
+        limit: int = 24,
+    ) -> list[dict[str, object]]:
+        store = self.store(
+            MemoryScope(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+        )
+        if query is not None and query.strip():
+            return list(store.search_graph_nodes(query=query, limit=limit))
+        return list(store.list_recent_graph_nodes(limit=limit))
+
+    def ui_graph_neighborhood(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        seed_node_ids: Sequence[str],
+        max_hops: int = 2,
+        node_limit: int = 120,
+    ) -> dict[str, object]:
+        store = self.store(
+            MemoryScope(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+        )
+        return store.get_graph_subgraph(
+            seed_node_ids=seed_node_ids,
+            max_hops=max_hops,
+            node_limit=node_limit,
+        )
+
+    def ui_memory_layers(
+        self,
+        tenant_id: str,
+        workspace_id: str,
+        user_id: str,
+        agent_id: str,
+        limit_per_layer: int = 80,
+    ) -> dict[str, object]:
+        layers = [
+            MemoryLayer.L1,
+            MemoryLayer.L2,
+            MemoryLayer.L3,
+            MemoryLayer.L4,
+        ]
+        store = self.store(
+            MemoryScope(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+        )
+        memories = store.list_recent_memory_units(
+            layers=layers,
+            limit_per_layer=limit_per_layer,
+        )
+        return {
+            "counts": store.memory_layer_counts(layers),
+            "layers": {
+                layer.value: [
+                    memory.model_dump(mode="json")
+                    for memory in memories[layer.value]
+                ]
+                for layer in layers
+            },
+        }
 
     def process_next_job(
         self,

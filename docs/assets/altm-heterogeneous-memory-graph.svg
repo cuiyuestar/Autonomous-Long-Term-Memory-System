@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="title desc">
+  <title id="title">ALTM heterogeneous memory graph</title>
+  <desc id="desc">A query about a delayed release directly recalls a task and then emerges related event, entity, time, intent, scene, persona, session, user, agent, and evidence nodes through typed graph edges.</desc>
+  <defs>
+    <marker id="arrow-sky" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#0284c7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#4f46e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .title { font: 600 28px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .eyebrow { font: 600 11px "SFMono-Regular", Consolas, monospace; letter-spacing: 1.2px; fill: #0369a1; }
+      .node-type { font: 600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .node-label { font: 400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .node-meta { font: 400 11px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #64748b; }
+      .edge-label { font: 600 11px "SFMono-Regular", Consolas, monospace; fill: #475569; }
+      .legend { font: 400 12px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #475569; }
+      .query { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; }
+      .hot { fill: #dbeafe; stroke: #0284c7; stroke-width: 2.5; }
+      .memory { fill: #f0f9ff; stroke: #38bdf8; stroke-width: 1.5; }
+      .context { fill: #eef2ff; stroke: #818cf8; stroke-width: 1.5; }
+      .evidence { fill: #ffffff; stroke: #818cf8; stroke-width: 1.5; stroke-dasharray: 6 5; }
+      .edge-hot { fill: none; stroke: #0284c7; stroke-width: 3; marker-end: url(#arrow-sky); }
+      .edge { fill: none; stroke: #4f46e5; stroke-width: 1.6; marker-end: url(#arrow-indigo); }
+      .edge-evidence { fill: none; stroke: #4f46e5; stroke-width: 1.5; stroke-dasharray: 6 5; marker-end: url(#arrow-indigo); }
+      .label-bg { fill: #ffffff; stroke: #e2e8f0; stroke-width: 0.75; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="778" rx="20" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="42" y="40" class="eyebrow">HETEROGENEOUS MEMORY GRAPH / QUERY-INDUCED EMERGENCE</text>
+  <text x="42" y="76" class="title">一次任务如何唤起关联经验</text>
+  <text x="42" y="102" class="subtitle">查询先命中任务节点，再沿时间、事件、实体、意图、场景与画像关系扩散，形成可追溯的最小证据子图。</text>
+
+  <rect x="420" y="126" width="360" height="54" rx="10" class="query"/>
+  <text x="600" y="149" text-anchor="middle" class="node-type">当前问题：“发布为什么延期？”</text>
+  <text x="600" y="168" text-anchor="middle" class="node-meta">direct recall → Task seed → Graph PPR</text>
+  <path d="M600 180V232" class="edge-hot"/>
+
+  <path d="M218 190C319 222 425 258 540 286" class="edge-hot"/>
+  <path d="M205 359C292 343 405 326 535 310" class="edge-hot"/>
+  <path d="M290 510C250 451 221 403 180 376" class="edge"/>
+  <path d="M600 344V506" class="edge"/>
+  <path d="M660 286C772 252 865 220 958 190" class="edge"/>
+  <path d="M955 310H665" class="edge"/>
+  <path d="M943 504C945 394 978 298 1012 218" class="edge"/>
+  <path d="M1018 444V364" class="edge"/>
+  <path d="M443 600C476 513 515 415 567 342" class="edge-evidence"/>
+  <path d="M203 376C270 435 329 510 400 586" class="edge-evidence"/>
+
+  <rect x="548" y="232" width="112" height="112" rx="16" class="hot"/>
+  <text x="604" y="263" text-anchor="middle" class="node-type">Task</text>
+  <text x="604" y="290" text-anchor="middle" class="node-label">发布 ALTM 1.0</text>
+  <text x="604" y="315" text-anchor="middle" class="node-meta">direct hit · seed</text>
+
+  <rect x="90" y="142" width="150" height="74" rx="12" class="memory"/>
+  <text x="165" y="167" text-anchor="middle" class="node-type">Time</text>
+  <text x="165" y="192" text-anchor="middle" class="node-label">9 月 1 日前</text>
+
+  <rect x="70" y="324" width="168" height="82" rx="12" class="hot"/>
+  <text x="154" y="349" text-anchor="middle" class="node-type">Event</text>
+  <text x="154" y="374" text-anchor="middle" class="node-label">Embedding 接口变更</text>
+  <text x="154" y="395" text-anchor="middle" class="node-meta">emerged experience</text>
+
+  <rect x="190" y="504" width="150" height="74" rx="12" class="memory"/>
+  <text x="265" y="529" text-anchor="middle" class="node-type">Entity</text>
+  <text x="265" y="554" text-anchor="middle" class="node-label">sqlite-vec</text>
+
+  <rect x="525" y="506" width="150" height="76" rx="12" class="memory"/>
+  <text x="600" y="531" text-anchor="middle" class="node-type">Scene</text>
+  <text x="600" y="556" text-anchor="middle" class="node-label">1.0 发布收敛</text>
+
+  <rect x="860" y="504" width="166" height="76" rx="12" class="context"/>
+  <text x="943" y="529" text-anchor="middle" class="node-type">Persona</text>
+  <text x="943" y="554" text-anchor="middle" class="node-label">偏好真实落地</text>
+
+  <rect x="942" y="142" width="166" height="76" rx="12" class="memory"/>
+  <text x="1025" y="167" text-anchor="middle" class="node-type">Intent</text>
+  <text x="1025" y="192" text-anchor="middle" class="node-label">真实可用地开源</text>
+
+  <rect x="942" y="282" width="166" height="82" rx="12" class="context"/>
+  <text x="1025" y="307" text-anchor="middle" class="node-type">Session</text>
+  <text x="1025" y="332" text-anchor="middle" class="node-label">发布收敛会话</text>
+  <text x="1025" y="352" text-anchor="middle" class="node-meta">current scope</text>
+
+  <circle cx="1025" cy="470" r="40" class="context"/>
+  <text x="1025" y="474" text-anchor="middle" class="node-type">Agent</text>
+  <circle cx="1130" cy="323" r="38" class="context"/>
+  <text x="1130" y="327" text-anchor="middle" class="node-type">User</text>
+  <path d="M1093 323H1066" class="edge"/>
+
+  <rect x="370" y="586" width="176" height="70" rx="10" class="evidence"/>
+  <text x="458" y="612" text-anchor="middle" class="node-type">Evidence refs</text>
+  <text x="458" y="638" text-anchor="middle" class="node-meta">L0 messages · L2 atoms</text>
+
+  <rect x="330" y="210" width="96" height="22" rx="4" class="label-bg"/>
+  <text x="378" y="225" text-anchor="middle" class="edge-label">deadline_for</text>
+  <rect x="335" y="323" width="60" height="22" rx="4" class="label-bg"/>
+  <text x="365" y="338" text-anchor="middle" class="edge-label">causes</text>
+  <rect x="206" y="432" width="82" height="22" rx="4" class="label-bg"/>
+  <text x="247" y="447" text-anchor="middle" class="edge-label">related_to</text>
+  <rect x="565" y="418" width="70" height="22" rx="4" class="label-bg"/>
+  <text x="600" y="433" text-anchor="middle" class="edge-label">part_of</text>
+  <rect x="946" y="350" width="68" height="22" rx="4" class="label-bg"/>
+  <text x="980" y="365" text-anchor="middle" class="edge-label">supports</text>
+  <rect x="786" y="210" width="88" height="22" rx="4" class="label-bg"/>
+  <text x="830" y="225" text-anchor="middle" class="edge-label">has_intent</text>
+  <rect x="778" y="296" width="68" height="22" rx="4" class="label-bg"/>
+  <text x="812" y="311" text-anchor="middle" class="edge-label">supports</text>
+  <rect x="1038" y="396" width="108" height="22" rx="4" class="label-bg"/>
+  <text x="1092" y="411" text-anchor="middle" class="edge-label">participates_in</text>
+  <text x="1102" y="300" text-anchor="middle" class="edge-label">participates_in</text>
+  <text x="376" y="512" text-anchor="middle" class="edge-label">derived_from</text>
+  <text x="500" y="492" text-anchor="middle" class="edge-label">supports</text>
+
+  <line x1="42" y1="700" x2="1158" y2="700" stroke="#e2e8f0"/>
+  <rect x="48" y="724" width="14" height="14" rx="3" fill="#dbeafe" stroke="#0284c7"/>
+  <text x="72" y="736" class="legend">查询激活与 PPR 热路径</text>
+  <rect x="280" y="724" width="14" height="14" rx="3" fill="#eef2ff" stroke="#818cf8"/>
+  <text x="304" y="736" class="legend">User / Agent / Session / Persona</text>
+  <line x1="570" y1="731" x2="608" y2="731" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="620" y="736" class="legend">证据回链</text>
+  <text x="1150" y="736" text-anchor="end" class="legend">所有节点与边均受 tenant / workspace / user / agent scope 约束</text>
+</svg>

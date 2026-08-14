@@ -22,6 +22,7 @@ dist/
 build/
 *.egg-info/
 node_modules/
+adapters/deepseek-harness/lib/
 coverage/
 .coverage
 data/

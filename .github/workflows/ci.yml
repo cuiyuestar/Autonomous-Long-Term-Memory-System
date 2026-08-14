@@ -26,9 +26,9 @@ jobs:
       - name: Install
         run: .venv/bin/python -m pip install -e ".[dev,mcp]" build
       - name: Compile
-        run: .venv/bin/python -m compileall -q src tests adapters/hermes
+        run: .venv/bin/python -m compileall -q src tests adapters/hermes adapters/deepseek-harness/tests
       - name: Lint
-        run: .venv/bin/ruff check src tests adapters/hermes
+        run: .venv/bin/ruff check src tests adapters/hermes adapters/deepseek-harness/tests/run_e2e.py
       - name: Strict type check
         run: .venv/bin/pyright
       - name: Test
@@ -60,3 +60,29 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+
+  deepseek-harness-adapter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            adapters/typescript/package-lock.json
+            adapters/deepseek-harness/package-lock.json
+      - name: Install and build TypeScript SDK
+        working-directory: adapters/typescript
+        run: |
+          npm ci
+          npm run build
+      - name: Install adapter
+        working-directory: adapters/deepseek-harness
+        run: npm ci
+      - name: Type check adapter
+        working-directory: adapters/deepseek-harness
+        run: npm run typecheck
+      - name: Test and build adapter
+        working-directory: adapters/deepseek-harness
+        run: npm test

@@ -63,6 +63,10 @@ class MCPManagementToolsTest(unittest.TestCase):
                 {
                     "memory_prepare_turn",
                     "memory_commit_turn",
+                    "memory_abort_turn",
+                    "memory_ui_graph_seeds",
+                    "memory_ui_graph_neighborhood",
+                    "memory_ui_layers",
                     "memory_mvp_chat",
                     "memory_drilldown",
                     "memory_feedback",
@@ -71,6 +75,49 @@ class MCPManagementToolsTest(unittest.TestCase):
                     "memory_delete",
                 },
             )
+
+    def test_runtime_ui_tools_read_scoped_layers_and_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            store = SQLiteMemoryStore(db_path)
+            store.initialize()
+            first = _memory("ui-first", "First UI memory")
+            second = _memory("ui-second", "Second UI memory")
+            store.put_memory_unit(first)
+            store.put_memory_unit(second)
+            store.put_memory_graph_edge(
+                source_memory_id=first.id,
+                target_memory_id=second.id,
+                edge_type="related_to",
+                weight=0.8,
+                confidence=0.8,
+            )
+
+            app = create_mcp_server(str(db_path))
+            scope = {
+                "tenant_id": "local",
+                "workspace_id": "default",
+                "user_id": "default",
+                "agent_id": "default",
+            }
+            layers = _call_tool(app, "memory_ui_layers", scope)
+            seeds = _call_tool_value(app, "memory_ui_graph_seeds", scope)
+
+            self.assertEqual(layers["counts"]["L2"], 2)
+            self.assertEqual(len(layers["layers"]["L2"]), 2)
+            self.assertIsInstance(seeds, list)
+            self.assertEqual(len(seeds), 2)
+            neighborhood = _call_tool(
+                app,
+                "memory_ui_graph_neighborhood",
+                {
+                    **scope,
+                    "seed_node_ids": [seeds[0]["id"]],
+                    "max_hops": 2,
+                },
+            )
+            self.assertEqual(len(neighborhood["nodes"]), 2)
+            self.assertEqual(len(neighborhood["edges"]), 1)
 
     def test_management_tools_are_registered(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -368,10 +415,19 @@ class MCPManagementToolsTest(unittest.TestCase):
 
 
 def _call_tool(app: object, name: str, arguments: dict[str, object]) -> dict[str, object]:
+    result = _call_tool_value(app, name, arguments)
+    if isinstance(result, dict):
+        return result
+    raise AssertionError("Unexpected MCP tool result: %r" % (result,))
+
+
+def _call_tool_value(app: object, name: str, arguments: dict[str, object]) -> object:
     result = asyncio.run(app.call_tool(name, arguments))
     if isinstance(result, tuple) and len(result) == 2:
-        return result[1]
-    if isinstance(result, dict):
+        result = result[1]
+    if isinstance(result, dict) and set(result) == {"result"}:
+        return result["result"]
+    if isinstance(result, (dict, list)):
         return result
     raise AssertionError("Unexpected MCP tool result: %r" % (result,))
 

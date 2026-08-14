@@ -564,6 +564,16 @@ class CommittedTurn(MemoryModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class AbortedTurn(MemoryModel):
+    cycle_id: str
+    scope: MemoryScope
+    session_id: str
+    turn_id: str
+    reason: str
+    status: str = "aborted"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ContextFusionDecision(MemoryModel):
     memory_id: str
     selected: bool

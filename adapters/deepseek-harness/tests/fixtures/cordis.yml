@@ -1,0 +1,48 @@
+- id: altm-e2e-mock-llm
+  name: './mock-llm.mjs'
+
+- id: altm-memory-provider
+  name: '@altm/deepseek-harness/provider'
+  config:
+    endpoint: !!js process.env.ALTM_MCP_ENDPOINT
+    apiKeyEnv: ALTM_MCP_API_KEY
+    timeoutMs: 10000
+    requestAttempts: 2
+
+- id: altm-memory
+  name: '@altm/deepseek-harness/consumer'
+  config:
+    tenantId: tenant-e2e
+    workspaceId: workspace-e2e
+    userId: !!js process.env.DSH_ALTM_USER_ID
+    agentId: deepseek-harness-e2e
+    tokenBudget: 1200
+    recallLimit: 10
+    activeWindowMode: full
+    activeLimit: 10
+    strictSession: false
+
+- id: agent-spine
+  name: '@deepseek-ai/dsh-agent-spine-demo'
+  config:
+    agents:
+      - id: main
+        sessionId: !!js process.env.DSH_ALTM_SESSION_ID
+        provider: altm-e2e
+        model: altm-e2e
+        cwd: !!js process.cwd()
+    persona: 'Exercise the ALTM DeepSeek Harness adapter.'
+    workspaceContext: false
+    skills:
+      enabled: false
+    toolBash: false
+    toolJobs: false
+
+- id: persistence
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: './.sessions'
+    compression: 'none'
+
+- id: checkpoint-policy
+  name: '@deepseek-ai/dsh-session-checkpoint-policy'

@@ -1,9 +1,11 @@
 import asyncio
+import io
 import json
 import sys
 import tempfile
 import threading
 import unittest
+from contextlib import redirect_stdout
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from altm.adapters.mcp.server import create_mcp_server  # noqa: E402
 from altm.application import AltmApplication  # noqa: E402
+from altm.cli import main as cli_main  # noqa: E402
 from altm.contracts import MemoryLayer, MemoryScope  # noqa: E402
 from altm.llm import llm_config_from_env  # noqa: E402
 from altm.storage import SQLiteMemoryStore  # noqa: E402
@@ -148,6 +151,120 @@ class RuntimeProtocolTest(unittest.TestCase):
             self.assertIsNotNone(first_store.get_memory_unit(first.user_memory_id))
             self.assertIsNone(first_store.get_memory_unit(second.user_memory_id))
             self.assertIsNotNone(second_store.get_memory_unit(second.user_memory_id))
+
+    def test_abort_is_idempotent_and_terminal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            app = AltmApplication(db_path)
+            prepared = app.prepare_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                session_id="session",
+                turn_id="turn-1",
+                content="cancel this turn",
+            )
+
+            aborted = app.abort_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                cycle_id=prepared.cycle_id,
+                reason="host-turn-aborted",
+            )
+            retried = app.abort_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                cycle_id=prepared.cycle_id,
+                reason="host-turn-aborted",
+            )
+
+            self.assertEqual(aborted, retried)
+            self.assertEqual(aborted.status, "aborted")
+            self.assertEqual(aborted.reason, "host-turn-aborted")
+            with self.assertRaisesRegex(ValueError, "Cannot commit"):
+                app.commit_turn(
+                    tenant_id="tenant",
+                    workspace_id="workspace",
+                    user_id="user",
+                    agent_id="agent",
+                    cycle_id=prepared.cycle_id,
+                    assistant_content="must not persist",
+                )
+            with self.assertRaisesRegex(ValueError, "already aborted"):
+                app.prepare_turn(
+                    tenant_id="tenant",
+                    workspace_id="workspace",
+                    user_id="user",
+                    agent_id="agent",
+                    session_id="session",
+                    turn_id="turn-1",
+                    content="cancel this turn",
+                )
+            store = SQLiteMemoryStore(db_path, scope=_scope("agent"))
+            store.initialize()
+            self.assertEqual(len(store.list_l0_by_session("session")), 1)
+
+    def test_abort_rejects_committed_cycle_and_reason_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app = AltmApplication(Path(tmpdir) / "memory.sqlite3")
+            prepared = app.prepare_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                session_id="session",
+                turn_id="turn-1",
+                content="hello",
+            )
+            app.abort_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                cycle_id=prepared.cycle_id,
+                reason="first-reason",
+            )
+            with self.assertRaisesRegex(ValueError, "idempotency conflict"):
+                app.abort_turn(
+                    tenant_id="tenant",
+                    workspace_id="workspace",
+                    user_id="user",
+                    agent_id="agent",
+                    cycle_id=prepared.cycle_id,
+                    reason="different-reason",
+                )
+
+            committed_prepared = app.prepare_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                session_id="session",
+                turn_id="turn-2",
+                content="commit me",
+            )
+            app.commit_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                cycle_id=committed_prepared.cycle_id,
+                assistant_content="committed",
+            )
+            with self.assertRaisesRegex(ValueError, "Cannot abort"):
+                app.abort_turn(
+                    tenant_id="tenant",
+                    workspace_id="workspace",
+                    user_id="user",
+                    agent_id="agent",
+                    cycle_id=committed_prepared.cycle_id,
+                    reason="too-late",
+                )
 
     def test_prepare_rejects_changed_content_or_query_for_same_turn(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -288,6 +405,75 @@ class RuntimeProtocolTest(unittest.TestCase):
             )
             self.assertEqual(committed["status"], "committed")
             self.assertEqual(committed["cited_memory_ids"], [cited_id])
+
+    def test_mcp_runtime_profile_executes_prepare_and_abort(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app = create_mcp_server(str(Path(tmpdir) / "memory.sqlite3"))
+            prepared = _call_tool(
+                app,
+                "memory_prepare_turn",
+                {
+                    "tenant_id": "tenant",
+                    "workspace_id": "workspace",
+                    "user_id": "user",
+                    "agent_id": "agent",
+                    "session_id": "session",
+                    "turn_id": "turn-1",
+                    "content": "hello",
+                },
+            )
+            aborted = _call_tool(
+                app,
+                "memory_abort_turn",
+                {
+                    "tenant_id": "tenant",
+                    "workspace_id": "workspace",
+                    "user_id": "user",
+                    "agent_id": "agent",
+                    "cycle_id": prepared["cycle_id"],
+                    "reason": "host-disposed",
+                },
+            )
+            self.assertEqual(aborted["status"], "aborted")
+            self.assertEqual(aborted["reason"], "host-disposed")
+
+    def test_cli_executes_abort_turn(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            prepared = AltmApplication(db_path).prepare_turn(
+                tenant_id="tenant",
+                workspace_id="workspace",
+                user_id="user",
+                agent_id="agent",
+                session_id="session",
+                turn_id="turn-1",
+                content="hello",
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = cli_main(
+                    [
+                        "abort-turn",
+                        "--db",
+                        str(db_path),
+                        "--tenant-id",
+                        "tenant",
+                        "--workspace-id",
+                        "workspace",
+                        "--user-id",
+                        "user",
+                        "--agent-id",
+                        "agent",
+                        "--cycle-id",
+                        prepared.cycle_id,
+                        "--reason",
+                        "cli-abort",
+                    ]
+                )
+            result = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(result["status"], "aborted")
+            self.assertEqual(result["reason"], "cli-abort")
 
     def test_stage_llm_config_overrides_only_selected_fields(self) -> None:
         with patch.dict(

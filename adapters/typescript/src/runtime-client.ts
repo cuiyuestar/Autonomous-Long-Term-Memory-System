@@ -1,4 +1,6 @@
 import type {
+  AbortedTurn,
+  AbortTurnInput,
   CommitTurnInput,
   CommittedTurn,
   ContextBundle,
@@ -44,6 +46,15 @@ export class AltmRuntimeClient {
     return committedTurnFromWire(extractToolPayload(payload));
   }
 
+  async abortTurn(input: AbortTurnInput): Promise<AbortedTurn> {
+    const payload = await this.caller.callTool("memory_abort_turn", {
+      ...scopeToWire(input.scope),
+      cycle_id: input.cycleId,
+      reason: input.reason
+    });
+    return abortedTurnFromWire(extractToolPayload(payload));
+  }
+
   async close(): Promise<void> {
     await this.caller.close();
   }
@@ -87,6 +98,19 @@ function committedTurnFromWire(value: unknown): CommittedTurn {
     ),
     citedMemoryIds: stringArray(record.cited_memory_ids, "cited_memory_ids"),
     enqueuedJobIds: stringArray(record.enqueued_job_ids, "enqueued_job_ids"),
+    status: stringValue(record.status, "status"),
+    metadata: optionalRecord(record.metadata)
+  };
+}
+
+function abortedTurnFromWire(value: unknown): AbortedTurn {
+  const record = objectValue(value, "AbortedTurn");
+  return {
+    cycleId: stringValue(record.cycle_id, "cycle_id"),
+    scope: scopeFromWire(record.scope),
+    sessionId: stringValue(record.session_id, "session_id"),
+    turnId: stringValue(record.turn_id, "turn_id"),
+    reason: stringValue(record.reason, "reason"),
     status: stringValue(record.status, "status"),
     metadata: optionalRecord(record.metadata)
   };
