@@ -10,84 +10,15 @@
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20HTTP-111827)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-22C55E)](LICENSE)
 
-[DeepSeek Harness](#deepseek-harness-插件) · [架构](#架构) · [核心能力](#核心能力) · [快速开始](#快速开始) · [Agent 接入](#agent-接入) · [MCP](#mcp-接入) · [评估](#评估)
+[DeepSeek Harness](#deepseek-harness) · [架构](#架构) · [核心能力](#核心能力) · [快速开始](#快速开始) · [Agent 接入](#agent-接入) · [MCP](#mcp-接入) · [评估](#评估)
 
 </div>
 
 ---
 
-## DeepSeek Harness 插件
-
 > **公告：ALTM 现已支持 DeepSeek Harness 插件化接入。** `@altm/deepseek-harness` 是独立于 Harness 源码的 Cordis bundle，可以安装、热启用、热停用和完整卸载。它不修改 agent loop，也不替换 Harness SessionEvent 日志、持久化、重放或 compaction；ALTM 作为可替换的长期记忆能力，为原生会话增加跨轮、跨会话召回和自主经验涌现。
-
-### 功能介绍
-
-| 功能 | 行为 |
-|---|---|
-| 完整插件角色 | `LongTermMemory` Service Definition、ALTM MCP Provider、Harness Consumer、只读 UI Host 和 Web Client 分离，可独立替换 Provider |
-| 可靠回合协议 | `agent/pre-step` prepare，最终 `turn/end` commit；失败、无 Assistant 回复或插件卸载时 abort，不遗留 prepared cycle |
-| 原生会话语义 | 召回内容以带来源的持久 `user/message` 进入 SessionEvent 日志，模型请求可恢复、可重放 |
-| 热插拔 | `cordis:group` 同步管理 Provider、Consumer 和 UI Host；启停过程不重启 Harness Web |
-| Memory 界面 | Harness 会话内提供 Graph 球状异构记忆图和 L1-L4 Layers 浏览器，支持中英文与响应式布局 |
-| 安全与隔离 | 浏览器不接触 MCP Key 或 SQLite 路径；服务端按 `tenant/workspace/user/agent` scope 查询，只读 UI 请求通过同源 Host 转发 |
-
-详细角色、配置和限制见 [DeepSeek Harness adapter 文档](adapters/deepseek-harness/README.md)，真实 Loader、MCP、生命周期和浏览器验收结果见[插件生命周期报告](docs/deepseek-harness-plugin-lifecycle-report.md)。
-
-### 快速入门
-
-以下流程假设 ALTM 与 DeepSeek Harness 是同级目录。需要 Python 3.11+、Node.js ^22.19 或 >=24、Corepack、`jq`、`curl` 和支持 FTS5 的 SQLite。
-
-```bash
-git clone https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System.git
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-
-cd Autonomous-Long-Term-Memory-System
-python3.11 -m venv .venv
-.venv/bin/python -m pip install -e ".[mcp]"
-
-mkdir -p data
-cp .env.example data/altm-harness.env
-chmod 600 data/altm-harness.env
-```
-
-在 `data/altm-harness.env` 中配置以下项目：
-
-| 变量 | 用途 |
-|---|---|
-| `DSH_HOME` | Harness profile 和凭证目录，推荐使用 ALTM 仓库下 `data/dsh-home` 的绝对路径 |
-| `DEEPSEEK_API_KEY` | Harness 模型凭证 |
-| `ALTM_LLM_BASE_URL`、`ALTM_LLM_API_KEY`、`ALTM_LLM_MODEL` | ALTM L1/L2/Graph/Governance 使用的 OpenAI-compatible Chat API |
-| `ALTM_MCP_API_KEY` | Harness Provider 连接 ALTM MCP 使用的随机明文 Key |
-| `ALTM_MCP_API_KEY_SHA256` | 上述 MCP Key 的 SHA-256；服务端使用该值验证请求 |
-
-可以用下面的命令计算哈希，不会输出明文 Key：
-
-```bash
-printf '%s' "$ALTM_MCP_API_KEY" | shasum -a 256
-```
-
-一条命令会构建并安装 bundle，初始化数据库，并启动 MCP、Worker 与 Harness Web：
-
-```bash
-./scripts/altm-harness-stack.sh start
-./scripts/altm-harness-stack.sh status
-```
-
-状态应同时包含 `plugin=enabled`、`mcp=running`、`worker=running` 和 `web=running`。打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)，正常对话即可自动写入和召回记忆；Memory 标签用于查看当前会话 scope 下的 Graph 与 L1-L4。用两轮对话验证时，第一轮声明一个独特事实，第二轮要求仅根据记忆回答并附带同一个 `memory://` marker。
-
-常用生命周期命令：
-
-```bash
-./scripts/altm-harness-stack.sh disable   # 热停用，不重启 Web
-./scripts/altm-harness-stack.sh enable    # 热启用，不重启 Web
-./scripts/altm-harness-stack.sh restart
-./scripts/altm-harness-stack.sh logs
-./scripts/altm-harness-stack.sh stop
-./scripts/altm-harness-stack.sh uninstall # 删除 profile dependency 和 bundle layer
-./scripts/altm-harness-stack.sh install   # 显式卸载后重新安装
-```
-
-DeepSeek Chat 可驱动 Harness 和 ALTM 的 L1/L2/Graph。完整 L3/L4 语义晋升还需要另行配置 OpenAI-compatible Embedding API。
+>
+> [功能介绍](#deepseek-harness) · [快速入门](#deepseek-harness-插件)
 
 ALTM 是一个面向 Agent 的自主长期记忆系统。它借鉴海马体的线索触发式回忆机制：Agent 执行任务时，当前问题会激活直接相关的历史记忆，并沿 Entity、Event、Task、Intent、Time 等关系继续扩散，让未被关键词或向量检索直接命中的关联经验随任务语境涌现。每条记忆都保留来源证据、关系路径和召回评分，Agent 可以据此追溯经验来自哪里、为何在当前任务中出现。
 
@@ -312,6 +243,59 @@ export ALTM_EMBEDDING_MODEL="your-embedding-model"
 
 配置全集见 [.env.example](.env.example)。留空的阶段级模型配置会继承 `ALTM_LLM_*`。
 
+### DeepSeek Harness 插件
+
+完成上述 ALTM 安装后，将 DeepSeek Harness 放在 ALTM 的同级目录。插件还需要 Node.js ^22.19 或 >=24、Corepack、`jq` 和 `curl`：
+
+```bash
+cd ..
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+cd Autonomous-Long-Term-Memory-System
+
+mkdir -p data
+cp .env.example data/altm-harness.env
+chmod 600 data/altm-harness.env
+```
+
+在 `data/altm-harness.env` 中配置：
+
+| 变量 | 用途 |
+|---|---|
+| `DSH_HOME` | Harness profile 和凭证目录，推荐使用 ALTM 仓库下 `data/dsh-home` 的绝对路径 |
+| `DEEPSEEK_API_KEY` | Harness 模型凭证 |
+| `ALTM_LLM_BASE_URL`、`ALTM_LLM_API_KEY`、`ALTM_LLM_MODEL` | ALTM L1/L2/Graph/Governance 使用的 OpenAI-compatible Chat API |
+| `ALTM_MCP_API_KEY` | Harness Provider 连接 ALTM MCP 使用的随机明文 Key |
+| `ALTM_MCP_API_KEY_SHA256` | 上述 MCP Key 的 SHA-256；服务端使用该值验证请求 |
+
+以下命令计算 MCP Key 的哈希，不会输出明文：
+
+```bash
+printf '%s' "$ALTM_MCP_API_KEY" | shasum -a 256
+```
+
+启动完整环境：
+
+```bash
+./scripts/altm-harness-stack.sh start
+./scripts/altm-harness-stack.sh status
+```
+
+状态应包含 `plugin=enabled`、`mcp=running`、`worker=running` 和 `web=running`。打开 [http://127.0.0.1:3000](http://127.0.0.1:3000)，正常对话即可自动写入和召回记忆；Memory 标签用于查看当前会话 scope 下的 Graph 与 L1-L4。
+
+常用生命周期命令：
+
+```bash
+./scripts/altm-harness-stack.sh disable   # 热停用，不重启 Web
+./scripts/altm-harness-stack.sh enable    # 热启用，不重启 Web
+./scripts/altm-harness-stack.sh restart
+./scripts/altm-harness-stack.sh logs
+./scripts/altm-harness-stack.sh stop
+./scripts/altm-harness-stack.sh uninstall
+./scripts/altm-harness-stack.sh install
+```
+
+验证记忆时，第一轮声明一个独特事实，第二轮要求仅根据记忆回答并附带同一个 `memory://` marker。DeepSeek Chat 可驱动 Harness 和 ALTM 的 L1/L2/Graph；完整 L3/L4 语义晋升还需要另行配置 OpenAI-compatible Embedding API。
+
 ## Agent 接入
 
 ### Python
@@ -502,6 +486,15 @@ await coordinator.commit({
 ### DeepSeek Harness
 
 [`adapters/deepseek-harness`](adapters/deepseek-harness) 提供可安装的 `@altm/deepseek-harness` Cordis bundle，并拆分为 `LongTermMemory` Service Definition、ALTM MCP Provider、Harness Consumer、只读 UI Host 和 Web Client。Consumer 在首个已接纳的 `agent/pre-step` 调用 Provider，把 ContextBundle 作为带来源的持久 `user/message` 加入同一请求；最终 `turn/end` 后 commit，失败 turn 或插件卸载则 abort。
+
+| 功能 | 行为 |
+|---|---|
+| 完整插件角色 | Service Definition、Provider、Consumer、只读 UI Host 和 Web Client 分离，可独立替换 Provider |
+| 可靠回合协议 | `agent/pre-step` prepare，最终 `turn/end` commit；失败、无 Assistant 回复或卸载时 abort |
+| 原生会话语义 | 召回内容以带来源的持久 `user/message` 进入 SessionEvent 日志，模型请求可恢复、可重放 |
+| 热插拔 | `cordis:group` 同步管理 Provider、Consumer 和 UI Host，启停过程不重启 Harness Web |
+| Memory 界面 | 提供 Graph 球状异构记忆图和 L1-L4 Layers 浏览器，支持中英文与响应式布局 |
+| 安全与隔离 | 浏览器不接触 MCP Key 或 SQLite 路径；只读请求按 `tenant/workspace/user/agent` scope 查询 |
 
 bundle 使用 `cordis:group` 统一热启停 Provider、Consumer 与 UI Host，也允许其他 Provider 实现相同 Service Definition。它不替换 Harness SessionEvent 日志，不修改 Harness agent loop 或 ALTM 记忆形成逻辑。API Key 通过 Harness credentials service 或环境变量引用解析，`tenantId / workspaceId / userId / agentId` 保持 ALTM 四级隔离。安装与配置见 [adapter README](adapters/deepseek-harness/README.md)，真实 Loader + MCP 结果见[接入测试报告](docs/deepseek-harness-integration-report.md)。
 
