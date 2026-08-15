@@ -38,8 +38,10 @@ class AltmBenchmarkRunner:
         normalized_ks = sorted({int(value) for value in top_ks})
         if not normalized_ks or normalized_ks[0] <= 0:
             raise ValueError("Benchmark top-k values must be positive")
-        if enrichment not in {"l0", "l2", "full"}:
-            raise ValueError("Benchmark enrichment must be l0, l2, or full")
+        if enrichment not in {"l0", "embedding", "l2", "full"}:
+            raise ValueError(
+                "Benchmark enrichment must be l0, embedding, l2, or full"
+            )
         self.db_path = Path(db_path)
         self.top_ks = tuple(normalized_ks)
         self.enrichment = enrichment
@@ -128,14 +130,15 @@ class AltmBenchmarkRunner:
     ) -> None:
         if self.enrichment == "l0":
             return
-        for session in corpus.sessions:
-            self.application.fold_l1(session.id, scope=scope)
-            self.application.extract_l2(session.id, scope=scope)
-            if self.enrichment == "full":
-                GraphLLMExtractor(self.application.store(scope)).extract_session(
-                    session.id
-                )
-        if self.enrichment != "full":
+        if self.enrichment in {"l2", "full"}:
+            for session in corpus.sessions:
+                self.application.fold_l1(session.id, scope=scope)
+                self.application.extract_l2(session.id, scope=scope)
+                if self.enrichment == "full":
+                    GraphLLMExtractor(self.application.store(scope)).extract_session(
+                        session.id
+                    )
+        if self.enrichment == "l2":
             return
         while True:
             indexed = self.application.index_embeddings(limit=1000, scope=scope)
@@ -144,6 +147,8 @@ class AltmBenchmarkRunner:
                 raise RuntimeError("Embedding index result is missing indexed_count")
             if indexed_count == 0:
                 break
+        if self.enrichment == "embedding":
+            return
         self.application.build_semantic_l3(scope=scope)
         self.application.distill_semantic_l4(scope=scope)
 

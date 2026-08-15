@@ -32,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--limit", type=int)
     run.add_argument(
         "--enrichment",
-        choices=["l0", "l2", "full"],
+        choices=["l0", "embedding", "l2", "full"],
         default="l0",
     )
 

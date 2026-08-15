@@ -27,6 +27,7 @@ export ALTM_EMBEDDING_BASE_URL="https://example.com/compatible-mode/v1"
 export ALTM_EMBEDDING_API_KEY="..."
 export ALTM_EMBEDDING_MODEL="text-embedding-v4"
 export ALTM_EMBEDDING_TIMEOUT_SECONDS="60"
+export ALTM_EMBEDDING_BATCH_SIZE="10"
 ```
 
 托管配置完整时优先于环境变量。可通过 `ALTM_EMBEDDING_CONFIG_PATH` 指定托管文件位置。
@@ -52,13 +53,13 @@ memory_unit_id + embedding_model -> content_hash, dimension, vector_json
 该命令会：
 
 1. 找出缺失 embedding 或 `content_hash` 已变化的 MemoryUnit。
-2. 批量调用 OpenAI-compatible `/embeddings`。
+2. 按配置的批大小调用 OpenAI-compatible `/embeddings`。
 3. 将向量写入 `memory_embeddings`。
 4. 输出本次索引数量和 memory ids，不输出密钥。
 
 ## Algorithm Flow
 
-1. `OpenAICompatibleEmbeddingClient` 根据 `ALTM_EMBEDDING_BASE_URL` 调用 `/embeddings`。
+1. `OpenAICompatibleEmbeddingClient` 根据 `ALTM_EMBEDDING_BASE_URL` 调用 `/embeddings`，按 `ALTM_EMBEDDING_BATCH_SIZE` 分批并保持输入顺序。
 2. `EmbeddingIndexer` 将 MemoryUnit 的 `summary`、`content` 和字符串 metadata 拼成 embedding text。
 3. `SQLiteMemoryStore.put_memory_embedding` 缓存向量。
 4. `FTSRetrievalEngine` 在配置完整时创建 `RemoteVectorRetriever`。

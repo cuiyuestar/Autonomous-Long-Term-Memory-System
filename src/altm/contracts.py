@@ -473,6 +473,7 @@ class EmbeddingConfig(MemoryModel):
     api_key: str
     model: str
     timeout_seconds: int = 60
+    batch_size: int = Field(default=10, ge=1)
 
 
 class RecallQuery(MemoryModel):

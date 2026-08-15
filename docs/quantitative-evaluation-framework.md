@@ -45,7 +45,7 @@ ALTM 不应只用一个问答正确率证明能力。它的差异化来自五个
 当前实现已经支持：
 
 - LongMemEval、LoCoMo 和匿名轨迹导入。
-- `l0`、`l2`、`full` 三种 enrichment。
+- `l0`、`embedding`、`l2`、`full` 四种 enrichment。
 - `Recall-any@K`、`Recall-all@K`、`nDCG@K`、`MRR`。
 - recall p50、p95、p99 延迟。
 - dataset SHA-256、环境和逐题 evidence ID。

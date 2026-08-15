@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -14,9 +15,85 @@ from altm.evaluation import (  # noqa: E402
     load_locomo,
     load_longmemeval,
 )
+from altm.evaluation.cli import build_parser  # noqa: E402
 
 
 class EvaluationTest(unittest.TestCase):
+    def test_embedding_enrichment_indexes_l0_without_other_folding(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            dataset_path = root / "longmemeval.json"
+            dataset_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "question_id": "q-embedding",
+                            "question_type": "single-session-user",
+                            "question": "What is the release deadline?",
+                            "answer": "September 1, 2026",
+                            "question_date": "2026-08-09",
+                            "haystack_session_ids": ["s1"],
+                            "haystack_dates": ["2026-08-01T00:00:00+00:00"],
+                            "haystack_sessions": [
+                                [
+                                    {
+                                        "role": "user",
+                                        "content": (
+                                            "The release deadline is September 1, 2026."
+                                        ),
+                                    }
+                                ]
+                            ],
+                            "answer_session_ids": ["s1"],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            runner = AltmBenchmarkRunner(
+                root / "benchmark.sqlite3",
+                top_ks=[1],
+                enrichment="embedding",
+            )
+
+            with (
+                patch.object(
+                    runner.application,
+                    "index_embeddings",
+                    side_effect=[
+                        {"indexed_count": 1},
+                        {"indexed_count": 0},
+                    ],
+                ) as index_embeddings,
+                patch.object(runner.application, "fold_l1") as fold_l1,
+                patch.object(runner.application, "extract_l2") as extract_l2,
+            ):
+                report = runner.run(load_longmemeval(dataset_path))
+
+            self.assertEqual(index_embeddings.call_count, 2)
+            fold_l1.assert_not_called()
+            extract_l2.assert_not_called()
+            self.assertEqual(report.config["enrichment"], "embedding")
+
+    def test_cli_accepts_embedding_enrichment(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "run",
+                "--format",
+                "longmemeval",
+                "--dataset",
+                "dataset.json",
+                "--db",
+                "benchmark.sqlite3",
+                "--output",
+                "report.json",
+                "--enrichment",
+                "embedding",
+            ]
+        )
+
+        self.assertEqual(args.enrichment, "embedding")
+
     def test_ndcg_counts_each_gold_session_once(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

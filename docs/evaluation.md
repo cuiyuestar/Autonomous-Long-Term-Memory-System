@@ -43,11 +43,12 @@ gain.
 Enrichment modes:
 
 - `l0`: raw-message retrieval baseline with no model calls.
+- `embedding`: L0 plus a real remote embedding index, without L1-L4 or Graph.
 - `l2`: real L1 summarization and L2 extraction before retrieval.
 - `full`: L1/L2, embedding index, Graph LLM, semantic L3, and semantic L4.
 
-`l2` and `full` fail when required model configuration is absent. They never
-replace semantic stages with mock output.
+`embedding`, `l2`, and `full` fail when required model configuration is absent.
+They never replace semantic stages with mock output.
 
 Reports contain Recall-any@K, Recall-all@K, nDCG@K, MRR, p50/p95/p99 latency,
 per-category aggregates, dataset SHA-256, Python/platform information, and

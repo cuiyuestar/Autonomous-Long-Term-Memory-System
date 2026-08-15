@@ -6,6 +6,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,7 @@ from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 class FakeEmbeddingHandler(BaseHTTPRequestHandler):
     last_path: str | None = None
     last_authorization: str | None = None
+    request_sizes: ClassVar[list[int]] = []
 
     def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
@@ -46,6 +48,7 @@ class FakeEmbeddingHandler(BaseHTTPRequestHandler):
 
         type(self).last_path = self.path
         type(self).last_authorization = self.headers.get("Authorization")
+        type(self).request_sizes.append(len(texts))
 
         data = [
             {
@@ -89,7 +92,42 @@ class FailingEmbeddingClient:
 
 
 class EmbeddingIntegrationTest(unittest.TestCase):
+    def test_embedding_client_splits_provider_safe_batches(self) -> None:
+        FakeEmbeddingHandler.request_sizes = []
+        server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = OpenAICompatibleEmbeddingClient(
+                EmbeddingConfig(
+                    base_url="http://127.0.0.1:%s/v1" % server.server_port,
+                    api_key="test-key",
+                    model="test-embedding",
+                    timeout_seconds=10,
+                    batch_size=2,
+                )
+            )
+            vectors = client.embed_texts(
+                [
+                    "semantic-target one",
+                    "other-target two",
+                    "semantic-target three",
+                    "other-target four",
+                    "semantic-target five",
+                ]
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+        self.assertEqual(FakeEmbeddingHandler.request_sizes, [2, 2, 1])
+        self.assertEqual(len(vectors), 5)
+        self.assertEqual(vectors[0], [1.0, 0.0, 0.0])
+        self.assertEqual(vectors[1], [0.0, 1.0, 0.0])
+
     def test_openai_compatible_embedding_client_calls_embeddings_endpoint(self) -> None:
+        FakeEmbeddingHandler.request_sizes = []
         server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()

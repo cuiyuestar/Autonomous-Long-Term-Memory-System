@@ -26,6 +26,14 @@ class OpenAICompatibleEmbeddingClient:
         return self.embed_texts([text])[0]
 
     def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), self.config.batch_size):
+            vectors.extend(
+                self._embed_batch(texts[start : start + self.config.batch_size])
+            )
+        return vectors
+
+    def _embed_batch(self, texts: Sequence[str]) -> list[list[float]]:
         url = self.config.base_url.rstrip("/") + "/embeddings"
         payload = {
             "model": self.config.model,
@@ -71,6 +79,7 @@ def embedding_config_from_env() -> EmbeddingConfig:
         api_key=os.environ["ALTM_EMBEDDING_API_KEY"],
         model=os.environ["ALTM_EMBEDDING_MODEL"],
         timeout_seconds=int(os.environ.get("ALTM_EMBEDDING_TIMEOUT_SECONDS", "60")),
+        batch_size=int(os.environ.get("ALTM_EMBEDDING_BATCH_SIZE", "10")),
     )
 
 
@@ -156,11 +165,15 @@ def embedding_config_candidate(
     timeout_seconds = current.timeout_seconds if current is not None else int(
         os.environ.get("ALTM_EMBEDDING_TIMEOUT_SECONDS", "60")
     )
+    batch_size = current.batch_size if current is not None else int(
+        os.environ.get("ALTM_EMBEDDING_BATCH_SIZE", "10")
+    )
     return EmbeddingConfig(
         base_url=normalized_base_url,
         api_key=normalized_api_key,
         model=normalized_model,
         timeout_seconds=timeout_seconds,
+        batch_size=batch_size,
     )
 
 
@@ -177,6 +190,7 @@ def save_embedding_config(
             "api_key": config.api_key,
             "model": config.model,
             "timeout_seconds": config.timeout_seconds,
+            "batch_size": config.batch_size,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -226,6 +240,7 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         api_key = payload["api_key"]
         model = payload["model"]
         timeout_seconds = payload.get("timeout_seconds", 60)
+        batch_size = payload.get("batch_size", 10)
     except KeyError as exc:
         raise RuntimeError("Managed embedding configuration is incomplete") from exc
     if (
@@ -233,6 +248,7 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         or not isinstance(api_key, str)
         or not isinstance(model, str)
         or not isinstance(timeout_seconds, int)
+        or not isinstance(batch_size, int)
     ):
         raise RuntimeError("Managed embedding configuration has invalid field types")
     return EmbeddingConfig(
@@ -240,6 +256,7 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         api_key=api_key,
         model=model,
         timeout_seconds=timeout_seconds,
+        batch_size=batch_size,
     )
 
 
