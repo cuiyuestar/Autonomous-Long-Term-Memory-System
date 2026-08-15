@@ -576,28 +576,20 @@ hermes plugins enable altm-memory
 
 ## 评估
 
-内置数据适配器支持：
+首轮公开评测使用 LongMemEval 和 LoCoMo，结果为 L0 原始记忆的证据检索基线，不代表最终问答准确率。
 
-- LongMemEval；
-- LoCoMo；
-- HMAC 匿名化真实 Agent trace。
+| Benchmark | 评测范围 | Recall-any@1 | Recall-any@5 | Recall-any@10 | Recall-all@10 | nDCG@10 | MRR | p95 延迟 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| LongMemEval cleaned | 前 100 题，100 题可评分 | 47.00% | 73.00% | 80.00% | 62.00% | 58.21% | 58.48% | 468.39 ms |
+| LoCoMo | 全集 1,986 题，1,982 题可评分 | 14.68% | 27.75% | 37.13% | 31.69% | 23.01% | 20.68% | 78.95 ms |
 
-运行 LongMemEval 召回评估：
+评测体系分为三层：
 
-```bash
-.venv/bin/altm-benchmark run \
-  --format longmemeval \
-  --dataset /approved/path/longmemeval_s_cleaned.json \
-  --db ./data/benchmark.sqlite3 \
-  --output ./reports/longmemeval.json \
-  --top-k 5 \
-  --top-k 10 \
-  --enrichment l0
-```
+1. **公共可比层**：使用 LongMemEval、LoCoMo 等公开 benchmark，测量证据召回、排序质量和召回延迟。
+2. **ALTM 诊断层**：通过分层记忆、Graph、CCR、Active Window 和 Lifecycle 的逐项消融，定位各模块的独立增益。
+3. **真实运行层**：使用匿名 Agent trace 和 Host 集成链路，验证最终任务收益、引用反馈、作用域隔离、可靠性与安全门禁。
 
-`--enrichment l0` 只写入原始记忆。`l2` 和 `full` 会调用对应的真实模型链，缺少配置时终止评估。
-
-报告包含 Recall-any@K、Recall-all@K、nDCG@K、MRR、p50/p95/p99 延迟、数据集 SHA-256、分类汇总和逐题证据。仓库不下载或分发评估数据集。方法与 trace 脱敏规则见 [Evaluation Guide](docs/evaluation.md)。
+公开 benchmark 保留各自原始指标，不将不同数据集压缩成一个总分。完整指标定义、基线和实施阶段见[量化评测体系](docs/quantitative-evaluation-framework.md)，逐题结果与本轮说明见[首轮评测报告](reports/initial-eval-20260815/README.md)。
 
 ## 项目结构
 
