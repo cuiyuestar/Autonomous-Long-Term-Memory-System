@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from collections.abc import Sequence
 from contextlib import suppress
+from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any, cast
 from urllib import error, request
@@ -34,6 +36,30 @@ class OpenAICompatibleEmbeddingClient:
         return vectors
 
     def _embed_batch(self, texts: Sequence[str]) -> list[list[float]]:
+        for attempt in range(self.config.max_retries + 1):
+            try:
+                return self._request_batch(texts)
+            except error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                if (
+                    attempt >= self.config.max_retries
+                    or (exc.code not in {408, 429} and exc.code < 500)
+                ):
+                    raise RuntimeError(
+                        "Embedding HTTP error %s: %s" % (exc.code, detail)
+                    ) from exc
+            except (
+                IncompleteRead,
+                TimeoutError,
+                ConnectionError,
+                error.URLError,
+            ) as exc:
+                if attempt >= self.config.max_retries:
+                    raise RuntimeError("Embedding request failed: %s" % exc) from exc
+            time.sleep(self.config.retry_delay_seconds * (2**attempt))
+        raise AssertionError("Embedding retry loop exhausted without returning or raising")
+
+    def _request_batch(self, texts: Sequence[str]) -> list[list[float]]:
         url = self.config.base_url.rstrip("/") + "/embeddings"
         payload = {
             "model": self.config.model,
@@ -48,15 +74,8 @@ class OpenAICompatibleEmbeddingClient:
                 "Content-Type": "application/json",
             },
         )
-        try:
-            with request.urlopen(req, timeout=self.config.timeout_seconds) as response:
-                data: dict[str, Any] = json.loads(response.read().decode("utf-8"))
-        except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError("Embedding HTTP error %s: %s" % (exc.code, detail)) from exc
-        except error.URLError as exc:
-            raise RuntimeError("Embedding request failed: %s" % exc) from exc
-
+        with request.urlopen(req, timeout=self.config.timeout_seconds) as response:
+            data: dict[str, Any] = json.loads(response.read().decode("utf-8"))
         items = sorted(data["data"], key=lambda item: item["index"])
         return [[float(value) for value in item["embedding"]] for item in items]
 
@@ -80,6 +99,10 @@ def embedding_config_from_env() -> EmbeddingConfig:
         model=os.environ["ALTM_EMBEDDING_MODEL"],
         timeout_seconds=int(os.environ.get("ALTM_EMBEDDING_TIMEOUT_SECONDS", "60")),
         batch_size=int(os.environ.get("ALTM_EMBEDDING_BATCH_SIZE", "10")),
+        max_retries=int(os.environ.get("ALTM_EMBEDDING_MAX_RETRIES", "3")),
+        retry_delay_seconds=float(
+            os.environ.get("ALTM_EMBEDDING_RETRY_DELAY_SECONDS", "0.5")
+        ),
     )
 
 
@@ -168,12 +191,22 @@ def embedding_config_candidate(
     batch_size = current.batch_size if current is not None else int(
         os.environ.get("ALTM_EMBEDDING_BATCH_SIZE", "10")
     )
+    max_retries = current.max_retries if current is not None else int(
+        os.environ.get("ALTM_EMBEDDING_MAX_RETRIES", "3")
+    )
+    retry_delay_seconds = (
+        current.retry_delay_seconds
+        if current is not None
+        else float(os.environ.get("ALTM_EMBEDDING_RETRY_DELAY_SECONDS", "0.5"))
+    )
     return EmbeddingConfig(
         base_url=normalized_base_url,
         api_key=normalized_api_key,
         model=normalized_model,
         timeout_seconds=timeout_seconds,
         batch_size=batch_size,
+        max_retries=max_retries,
+        retry_delay_seconds=retry_delay_seconds,
     )
 
 
@@ -191,6 +224,8 @@ def save_embedding_config(
             "model": config.model,
             "timeout_seconds": config.timeout_seconds,
             "batch_size": config.batch_size,
+            "max_retries": config.max_retries,
+            "retry_delay_seconds": config.retry_delay_seconds,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -241,6 +276,8 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         model = payload["model"]
         timeout_seconds = payload.get("timeout_seconds", 60)
         batch_size = payload.get("batch_size", 10)
+        max_retries = payload.get("max_retries", 3)
+        retry_delay_seconds = payload.get("retry_delay_seconds", 0.5)
     except KeyError as exc:
         raise RuntimeError("Managed embedding configuration is incomplete") from exc
     if (
@@ -249,6 +286,8 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         or not isinstance(model, str)
         or not isinstance(timeout_seconds, int)
         or not isinstance(batch_size, int)
+        or not isinstance(max_retries, int)
+        or not isinstance(retry_delay_seconds, int | float)
     ):
         raise RuntimeError("Managed embedding configuration has invalid field types")
     return EmbeddingConfig(
@@ -257,6 +296,8 @@ def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
         model=model,
         timeout_seconds=timeout_seconds,
         batch_size=batch_size,
+        max_retries=max_retries,
+        retry_delay_seconds=float(retry_delay_seconds),
     )
 
 

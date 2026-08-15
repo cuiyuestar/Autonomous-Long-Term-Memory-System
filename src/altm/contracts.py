@@ -474,6 +474,8 @@ class EmbeddingConfig(MemoryModel):
     model: str
     timeout_seconds: int = 60
     batch_size: int = Field(default=10, ge=1)
+    max_retries: int = Field(default=3, ge=0)
+    retry_delay_seconds: float = Field(default=0.5, ge=0)
 
 
 class RecallQuery(MemoryModel):

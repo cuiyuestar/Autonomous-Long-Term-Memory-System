@@ -28,6 +28,8 @@ export ALTM_EMBEDDING_API_KEY="..."
 export ALTM_EMBEDDING_MODEL="text-embedding-v4"
 export ALTM_EMBEDDING_TIMEOUT_SECONDS="60"
 export ALTM_EMBEDDING_BATCH_SIZE="10"
+export ALTM_EMBEDDING_MAX_RETRIES="3"
+export ALTM_EMBEDDING_RETRY_DELAY_SECONDS="0.5"
 ```
 
 托管配置完整时优先于环境变量。可通过 `ALTM_EMBEDDING_CONFIG_PATH` 指定托管文件位置。
@@ -72,6 +74,7 @@ memory_unit_id + embedding_model -> content_hash, dimension, vector_json
 2. 索引不阻塞 L0/L1/L2 写入：持久化 Worker 队列在 `extract_l2` 后异步执行 `index_embeddings`，显式 CLI/MCP 索引仍可用于补建和诊断。
 3. 配置保存与索引分离：保存只执行一个连通性向量请求，不在浏览器请求中同步回填历史记忆。
 4. 远程失败走本地回退：召回链路优先保持可用性，真正的连通性和索引错误由 `index-embeddings` 显式暴露。
+5. 瞬时传输错误、HTTP 429 和 5xx 按配置执行指数退避；鉴权、额度和请求参数等 4xx 业务错误立即失败。
 
 ## Failure Modes
 

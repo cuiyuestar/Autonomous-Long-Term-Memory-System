@@ -81,6 +81,25 @@ class FakeEmbeddingHandler(BaseHTTPRequestHandler):
         return [0.0, 0.0, 1.0]
 
 
+class TruncatedOnceEmbeddingHandler(FakeEmbeddingHandler):
+    request_count = 0
+
+    def do_POST(self) -> None:
+        type(self).request_count += 1
+        if type(self).request_count > 1:
+            super().do_POST()
+            return
+        content_length = int(self.headers.get("Content-Length", "0"))
+        self.rfile.read(content_length)
+        partial = b'{"object":"list","data":['
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(partial) + 100))
+        self.end_headers()
+        self.wfile.write(partial)
+        self.close_connection = True
+
+
 class FailingEmbeddingClient:
     class Config:
         model = "failing-embedding"
@@ -92,6 +111,32 @@ class FailingEmbeddingClient:
 
 
 class EmbeddingIntegrationTest(unittest.TestCase):
+    def test_embedding_client_retries_truncated_response(self) -> None:
+        TruncatedOnceEmbeddingHandler.request_count = 0
+        server = HTTPServer(("127.0.0.1", 0), TruncatedOnceEmbeddingHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = OpenAICompatibleEmbeddingClient(
+                EmbeddingConfig(
+                    base_url="http://127.0.0.1:%s/v1" % server.server_port,
+                    api_key="test-key",
+                    model="test-embedding",
+                    timeout_seconds=10,
+                    batch_size=2,
+                    max_retries=1,
+                    retry_delay_seconds=0,
+                )
+            )
+            vectors = client.embed_texts(["semantic-target memory"])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+        self.assertEqual(TruncatedOnceEmbeddingHandler.request_count, 2)
+        self.assertEqual(vectors, [[1.0, 0.0, 0.0]])
+
     def test_embedding_client_splits_provider_safe_batches(self) -> None:
         FakeEmbeddingHandler.request_sizes = []
         server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
