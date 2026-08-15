@@ -1,5 +1,10 @@
 # Benchmark and Anonymous Trace Evaluation
 
+The current runner and report format are documented below. See the
+[full quantitative evaluation framework](quantitative-evaluation-framework.md)
+for the proposed public benchmark suite, ALTM-specific metrics, controlled
+ablations, safety gates, and implementation phases.
+
 ALTM evaluates retrieval against local copies of:
 
 - [LongMemEval](https://github.com/xiaowu0162/LongMemEval)
