@@ -35,6 +35,11 @@ Formats:
   `evidence` turn IDs.
 - `anonymous-trace`: one isolated corpus per HMAC-anonymized trace.
 
+Blank LongMemEval turns are ignored while non-blank turns retain their original
+source indices. nDCG counts each gold evidence identifier at most once, so
+multiple retrieved memories derived from one source cannot inflate ranking
+gain.
+
 Enrichment modes:
 
 - `l0`: raw-message retrieval baseline with no model calls.

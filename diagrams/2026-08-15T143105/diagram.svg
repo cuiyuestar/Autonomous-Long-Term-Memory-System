@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1120" width="1800" height="1120">
+  <defs>
+    <linearGradient id="canvasGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="blueGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="purpleGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="greenGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="1760" height="1080" rx="28" fill="url(#canvasGlow)" stroke="#334155" stroke-width="2"/>
+  <circle cx="120" cy="76" r="38" fill="#2563EB" opacity="0.12"/>
+  <circle cx="1680" cy="1032" r="62" fill="#10B981" opacity="0.08"/>
+  <path d="M90 142 H1710" stroke="#334155" stroke-width="2"/>
+
+  <text x="900" y="78" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="34" font-weight="700" text-anchor="middle">ALTM 内部模块与闭环架构</text>
+  <text x="900" y="118" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="16" text-anchor="middle">外置增强 · 分层形成 · 混合召回 · 可逆治理 · 反馈演化 · 作用域隔离</text>
+
+  <text x="80" y="162" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="600">实时主链</text>
+  <text x="80" y="642" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="600">治理与沉淀</text>
+
+  <!-- Main flow connectors -->
+  <polyline points="580,345 650,345" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="650,345 634,335 634,355" fill="#3B82F6"/>
+  <polyline points="1150,345 1220,345" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1220,345 1204,335 1204,355" fill="#8B5CF6"/>
+  <polyline points="1470,520 1470,650" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1470,650 1460,634 1480,634" fill="#3B82F6"/>
+  <polyline points="1220,825 1150,825" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1150,825 1166,815 1166,835" fill="#8B5CF6"/>
+  <polyline points="650,825 580,825" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="580,825 596,815 596,835" fill="#10B981"/>
+  <polyline points="80,825 46,825 46,345 80,345" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polygon points="80,345 64,335 64,355" fill="#3B82F6"/>
+  <text x="29" y="585" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" text-anchor="middle" transform="rotate(-90 29 585)">状态沉淀 · 新一轮交互</text>
+
+  <!-- Stage 1 -->
+  <g filter="url(#cardShadow)">
+    <rect x="80" y="170" width="500" height="350" rx="22" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+    <rect x="80" y="170" width="10" height="350" rx="5" fill="url(#blueGlow)"/>
+  </g>
+  <circle cx="120" cy="210" r="22" fill="url(#blueGlow)"/>
+  <text x="120" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">01</text>
+  <text x="154" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">Host 交互层</text>
+  <line x1="110" y1="238" x2="550" y2="238" stroke="#334155" stroke-width="2"/>
+
+  <rect x="225" y="258" width="210" height="50" rx="25" fill="#2563EB" stroke="#3B82F6" stroke-width="2"/>
+  <text x="330" y="290" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">Host Agent</text>
+  <polyline points="330,308 330,329" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="330,337 322,325 338,325" fill="#3B82F6"/>
+
+  <rect x="112" y="338" width="124" height="44" rx="12" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="268" y="338" width="124" height="44" rx="12" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="424" y="338" width="124" height="44" rx="12" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <text x="174" y="366" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">用户输入</text>
+  <text x="330" y="366" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">模型响应</text>
+  <text x="486" y="366" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">工具活动</text>
+
+  <polyline points="174,382 174,404 486,404 486,382" fill="none" stroke="#475569" stroke-width="2"/>
+  <polyline points="330,382 330,404" fill="none" stroke="#475569" stroke-width="2"/>
+  <polygon points="330,414 322,402 338,402" fill="#3B82F6"/>
+  <rect x="135" y="414" width="390" height="74" rx="16" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <text x="330" y="444" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" text-anchor="middle">准备 · 提交 · 中止</text>
+  <text x="330" y="470" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">保持原生会话可恢复、可重放</text>
+
+  <!-- Stage 2 -->
+  <g filter="url(#cardShadow)">
+    <rect x="650" y="170" width="500" height="350" rx="22" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+    <rect x="650" y="170" width="10" height="350" rx="5" fill="url(#purpleGlow)"/>
+  </g>
+  <circle cx="690" cy="210" r="22" fill="url(#purpleGlow)"/>
+  <text x="690" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">02</text>
+  <text x="724" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">分层记忆形成</text>
+  <line x1="680" y1="238" x2="1120" y2="238" stroke="#334155" stroke-width="2"/>
+
+  <rect x="690" y="254" width="420" height="42" rx="12" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="717" cy="275" r="12" fill="#3B82F6"/>
+  <text x="717" y="280" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="12" font-weight="700" text-anchor="middle">L0</text>
+  <text x="744" y="281" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14">原始消息 · 完整记录与来源证据</text>
+
+  <rect x="690" y="304" width="420" height="42" rx="12" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <circle cx="717" cy="325" r="12" fill="#8B5CF6"/>
+  <text x="717" y="330" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="12" font-weight="700" text-anchor="middle">L1</text>
+  <text x="744" y="331" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14">会话胶囊 · 目标、约束、决策</text>
+
+  <rect x="690" y="354" width="420" height="42" rx="12" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <circle cx="717" cy="375" r="12" fill="#8B5CF6"/>
+  <text x="717" y="380" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="12" font-weight="700" text-anchor="middle">L2</text>
+  <text x="744" y="381" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14">原子事实 · 类型、关系、可追溯证据</text>
+
+  <rect x="690" y="404" width="420" height="42" rx="12" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <circle cx="717" cy="425" r="12" fill="#10B981"/>
+  <text x="717" y="430" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="12" font-weight="700" text-anchor="middle">L3</text>
+  <text x="744" y="431" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14">跨会话场景 · 项目、任务、工作流</text>
+
+  <rect x="690" y="454" width="420" height="42" rx="12" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <circle cx="717" cy="475" r="12" fill="#10B981"/>
+  <text x="717" y="480" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="12" font-weight="700" text-anchor="middle">L4</text>
+  <text x="744" y="481" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14">稳定画像 · 跨上下文证据共识</text>
+
+  <!-- Stage 3 -->
+  <g filter="url(#cardShadow)">
+    <rect x="1220" y="170" width="500" height="350" rx="22" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+    <rect x="1220" y="170" width="10" height="350" rx="5" fill="url(#greenGlow)"/>
+  </g>
+  <circle cx="1260" cy="210" r="22" fill="url(#greenGlow)"/>
+  <text x="1260" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">03</text>
+  <text x="1294" y="217" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">混合召回与关系涌现</text>
+  <line x1="1250" y1="238" x2="1690" y2="238" stroke="#334155" stroke-width="2"/>
+
+  <rect x="1260" y="258" width="190" height="48" rx="14" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <rect x="1490" y="258" width="190" height="48" rx="14" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <rect x="1260" y="326" width="190" height="48" rx="14" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <rect x="1490" y="326" width="190" height="48" rx="14" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <text x="1355" y="288" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">FTS · 精确关键词</text>
+  <text x="1585" y="288" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">Embedding · 语义近似</text>
+  <text x="1355" y="356" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">PPR · 关系扩散</text>
+  <text x="1585" y="356" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">主动窗口 · 近期线索</text>
+
+  <polyline points="1355,306 1355,395 1440,395" fill="none" stroke="#475569" stroke-width="2"/>
+  <polyline points="1585,306 1585,395 1500,395" fill="none" stroke="#475569" stroke-width="2"/>
+  <polyline points="1355,374 1355,395" fill="none" stroke="#475569" stroke-width="2"/>
+  <polyline points="1585,374 1585,395" fill="none" stroke="#475569" stroke-width="2"/>
+  <ellipse cx="1470" cy="412" rx="72" ry="34" fill="#2563EB" stroke="#3B82F6" stroke-width="2"/>
+  <text x="1470" y="419" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="18" font-weight="700" text-anchor="middle">RRF 融合</text>
+  <polyline points="1470,446 1470,460" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="1470,470 1462,458 1478,458" fill="#10B981"/>
+  <rect x="1280" y="470" width="380" height="34" rx="17" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <text x="1470" y="492" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">实体 · 时间 · 任务 · 意图 · 因果路径解释</text>
+
+  <!-- Stage 4 -->
+  <g filter="url(#cardShadow)">
+    <rect x="1220" y="650" width="500" height="350" rx="22" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+    <rect x="1220" y="650" width="10" height="350" rx="5" fill="url(#blueGlow)"/>
+  </g>
+  <circle cx="1260" cy="690" r="22" fill="url(#blueGlow)"/>
+  <text x="1260" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">04</text>
+  <text x="1294" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">上下文治理与可逆下钻</text>
+  <line x1="1250" y1="718" x2="1690" y2="718" stroke="#334155" stroke-width="2"/>
+
+  <rect x="1260" y="740" width="420" height="44" rx="22" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <text x="1470" y="768" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">候选记忆：相关性 × 层级 × token 预算</text>
+  <polyline points="1470,784 1470,803" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="1470,813 1462,801 1478,801" fill="#3B82F6"/>
+  <polygon points="1470,812 1545,850 1470,888 1395,850" fill="#2563EB" stroke="#3B82F6" stroke-width="2"/>
+  <text x="1470" y="846" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" text-anchor="middle">CCR</text>
+  <text x="1470" y="867" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">类型路由压缩</text>
+
+  <rect x="1250" y="910" width="190" height="64" rx="14" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="1500" y="910" width="190" height="64" rx="14" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <text x="1345" y="937" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">紧凑上下文</text>
+  <text x="1345" y="959" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">稳定标记 · 预算内注入</text>
+  <text x="1595" y="937" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">完整证据</text>
+  <text x="1595" y="959" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">按需下钻 · 作用域校验</text>
+  <polyline points="1440,942 1500,942" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="1500,942 1488,934 1488,950" fill="#10B981"/>
+  <polygon points="1440,942 1452,934 1452,950" fill="#3B82F6"/>
+
+  <!-- Stage 5 -->
+  <g filter="url(#cardShadow)">
+    <rect x="650" y="650" width="500" height="350" rx="22" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+    <rect x="650" y="650" width="10" height="350" rx="5" fill="url(#purpleGlow)"/>
+  </g>
+  <circle cx="690" cy="690" r="22" fill="url(#purpleGlow)"/>
+  <text x="690" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">05</text>
+  <text x="724" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">生命周期与反馈</text>
+  <line x1="680" y1="718" x2="1120" y2="718" stroke="#334155" stroke-width="2"/>
+
+  <circle cx="900" cy="850" r="72" fill="#0F172A" stroke="#8B5CF6" stroke-width="3"/>
+  <circle cx="900" cy="850" r="48" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+  <text x="900" y="846" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" text-anchor="middle">证据状态</text>
+  <text x="900" y="870" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">持续演化</text>
+
+  <rect x="810" y="744" width="180" height="46" rx="23" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <rect x="1000" y="827" width="124" height="46" rx="23" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+  <rect x="810" y="910" width="180" height="46" rx="23" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <rect x="676" y="827" width="124" height="46" rx="23" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <text x="900" y="773" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" text-anchor="middle">真实引用</text>
+  <text x="1062" y="856" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" text-anchor="middle">反馈</text>
+  <text x="900" y="939" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" text-anchor="middle">晋升 · 降级</text>
+  <text x="738" y="856" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" text-anchor="middle">覆盖 · 遗忘</text>
+
+  <path d="M990 774 C1064 784 1090 804 1100 827" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="1103,831 1090,823 1104,816" fill="#8B5CF6"/>
+  <path d="M1110 873 C1090 912 1040 932 990 932" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="986,932 1000,924 1000,940" fill="#10B981"/>
+  <path d="M810 932 C760 924 720 906 704 874" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="701,870 715,878 700,885" fill="#10B981"/>
+  <path d="M690 827 C710 790 760 770 810 768" fill="none" stroke="#475569" stroke-width="3"/>
+  <polygon points="814,768 800,776 800,760" fill="#8B5CF6"/>
+  <text x="900" y="985" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">证据质量 · 冲突 · 新鲜度 · 有益 / 有害信号</text>
+
+  <!-- Stage 6 -->
+  <g filter="url(#cardShadow)">
+    <rect x="80" y="650" width="500" height="350" rx="22" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+    <rect x="80" y="650" width="10" height="350" rx="5" fill="url(#greenGlow)"/>
+  </g>
+  <circle cx="120" cy="690" r="22" fill="url(#greenGlow)"/>
+  <text x="120" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" text-anchor="middle">06</text>
+  <text x="154" y="697" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700">作用域持久化</text>
+  <line x1="110" y1="718" x2="550" y2="718" stroke="#334155" stroke-width="2"/>
+
+  <g>
+    <ellipse cx="200" cy="770" rx="82" ry="24" fill="#2563EB" stroke="#10B981" stroke-width="2"/>
+    <rect x="118" y="770" width="164" height="132" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+    <ellipse cx="200" cy="902" rx="82" ry="24" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+    <ellipse cx="200" cy="770" rx="62" ry="15" fill="#1E293B" stroke="#3B82F6" stroke-width="2"/>
+    <text x="200" y="805" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" text-anchor="middle">持久化底座</text>
+    <text x="200" y="836" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">原文 · 索引</text>
+    <text x="200" y="860" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">关系 · 任务状态</text>
+    <text x="200" y="884" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">证据链 · 生命周期</text>
+  </g>
+
+  <rect x="320" y="750" width="220" height="34" rx="17" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <rect x="336" y="794" width="188" height="34" rx="17" fill="#1E293B" stroke="#8B5CF6" stroke-width="2"/>
+  <rect x="352" y="838" width="156" height="34" rx="17" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+  <rect x="368" y="882" width="124" height="34" rx="17" fill="#2563EB" stroke="#3B82F6" stroke-width="2"/>
+  <text x="430" y="773" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">租户</text>
+  <text x="430" y="817" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">工作区</text>
+  <text x="430" y="861" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">用户</text>
+  <text x="430" y="905" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Agent</text>
+  <text x="430" y="938" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">逐级收敛的可见范围</text>
+
+  <rect x="110" y="946" width="440" height="36" rx="18" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <text x="330" y="969" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="13" text-anchor="middle">L0-L3：Agent 隔离 · L4：同一用户工作区共享</text>
+
+  <text x="900" y="1066" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">删除、墓碑与拒绝关系在召回前过滤；每次反馈都回到下一轮记忆形成</text>
+</svg>

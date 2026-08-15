@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1120" width="1800" height="1120">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFF"/>
+      <stop offset="100%" stop-color="#EEF2FF"/>
+    </linearGradient>
+    <linearGradient id="graph" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5B5FEF"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="evidence" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#ECFEFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1800" height="1120" fill="url(#bg)"/>
+
+  <text x="70" y="125" font-family="Noto Sans SC, sans-serif" font-size="40" font-weight="700" fill="#172554">查询诱导的关系图涌现链路</text>
+  <text x="70" y="158" font-family="Noto Sans SC, sans-serif" font-size="19" fill="#64748B">从直接命中的种子任务出发，在约束内传播，并给出可解释的最小证据路径</text>
+
+  <rect x="70" y="185" width="1280" height="600" rx="30" fill="#FFFFFF" stroke="#DDE5F5" stroke-width="2"/>
+  <rect x="94" y="207" width="138" height="32" rx="16" fill="#EFF6FF"/>
+  <text x="163" y="229" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#2563EB">主传播链路</text>
+
+  <circle cx="195" cy="408" r="88" fill="#EFF6FF" stroke="#93C5FD" stroke-width="3"/>
+  <circle cx="195" cy="363" r="9" fill="#2563EB"/>
+  <path d="M180 377 C180 360 210 360 210 377 C210 389 195 393 195 406" fill="none" stroke="#2563EB" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="195" cy="420" r="4" fill="#2563EB"/>
+  <text x="195" y="454" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#1E3A8A">当前问题</text>
+  <text x="195" y="481" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" fill="#64748B">查询锚点</text>
+
+  <line x1="283" y1="408" x2="328" y2="408" stroke="#60A5FA" stroke-width="4"/>
+  <polygon points="328,398 346,408 328,418" fill="#60A5FA"/>
+
+  <rect x="346" y="318" width="252" height="180" rx="24" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="370" y="342" width="102" height="28" rx="14" fill="#DBEAFE"/>
+  <text x="421" y="362" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#1D4ED8">DIRECT HIT</text>
+  <circle cx="387" cy="405" r="19" fill="#2563EB"/>
+  <path d="M378 405 L385 412 L397 397" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="416" y="405" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#0F172A">直接命中</text>
+  <text x="416" y="435" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#0F172A">种子任务</text>
+  <rect x="370" y="455" width="196" height="28" rx="14" fill="#FFFFFF" stroke="#D7E0EF"/>
+  <text x="468" y="475" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#475569">唯一字面入口</text>
+
+  <line x1="598" y1="408" x2="638" y2="408" stroke="#818CF8" stroke-width="4"/>
+  <polygon points="638,398 656,408 638,418" fill="#818CF8"/>
+
+  <rect x="656" y="252" width="422" height="314" rx="30" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="3"/>
+  <text x="686" y="291" font-family="Noto Sans SC, sans-serif" font-size="24" font-weight="700" fill="#312E81">沿关系进行有限跳数传播</text>
+  <text x="686" y="318" font-family="Noto Sans SC, sans-serif" font-size="16" fill="#6D5FA7">受控扩散 · 最多 K 跳</text>
+
+  <line x1="867" y1="409" x2="745" y2="370" stroke="#A78BFA" stroke-width="3"/>
+  <line x1="867" y1="409" x2="989" y2="370" stroke="#A78BFA" stroke-width="3"/>
+  <line x1="867" y1="409" x2="741" y2="485" stroke="#A78BFA" stroke-width="3"/>
+  <line x1="867" y1="409" x2="993" y2="485" stroke="#A78BFA" stroke-width="3"/>
+  <line x1="867" y1="409" x2="867" y2="515" stroke="#A78BFA" stroke-width="3"/>
+
+  <circle cx="867" cy="409" r="66" fill="url(#graph)"/>
+  <text x="867" y="404" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#FFFFFF">Graph</text>
+  <text x="867" y="432" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="18" font-weight="700" fill="#E0E7FF">PPR</text>
+
+  <circle cx="745" cy="370" r="38" fill="#FFFFFF" stroke="#93C5FD" stroke-width="2"/>
+  <text x="745" y="376" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#1D4ED8">时间</text>
+  <circle cx="989" cy="370" r="38" fill="#FFFFFF" stroke="#67E8F9" stroke-width="2"/>
+  <text x="989" y="376" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#0E7490">事件</text>
+  <circle cx="741" cy="485" r="38" fill="#FFFFFF" stroke="#A5B4FC" stroke-width="2"/>
+  <text x="741" y="491" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#4338CA">实体</text>
+  <circle cx="993" cy="485" r="38" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="2"/>
+  <text x="993" y="491" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#6D28D9">意图</text>
+  <circle cx="867" cy="515" r="38" fill="#FFFFFF" stroke="#99F6E4" stroke-width="2"/>
+  <text x="867" y="521" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700" fill="#0F766E">场景</text>
+
+  <line x1="1078" y1="408" x2="1114" y2="408" stroke="#8B5CF6" stroke-width="4"/>
+  <polygon points="1114,398 1132,408 1114,418" fill="#8B5CF6"/>
+
+  <rect x="1132" y="318" width="190" height="180" rx="24" fill="#F0FDFA" stroke="#5EEAD4" stroke-width="2"/>
+  <circle cx="1170" cy="360" r="18" fill="#0D9488"/>
+  <circle cx="1165" cy="357" r="4" fill="#FFFFFF"/>
+  <circle cx="1176" cy="353" r="4" fill="#FFFFFF"/>
+  <circle cx="1177" cy="366" r="4" fill="#FFFFFF"/>
+  <line x1="1168" y1="357" x2="1173" y2="354" stroke="#FFFFFF" stroke-width="2"/>
+  <line x1="1168" y1="360" x2="1174" y2="364" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="1198" y="367" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#134E4A">关联经验</text>
+  <text x="1156" y="414" font-family="Noto Sans SC, sans-serif" font-size="16" fill="#475569">正文不含</text>
+  <text x="1156" y="439" font-family="Noto Sans SC, sans-serif" font-size="16" fill="#475569">当前查询锚点</text>
+  <rect x="1156" y="456" width="142" height="28" rx="14" fill="#CCFBF1"/>
+  <text x="1227" y="476" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#0F766E">Graph-only</text>
+
+  <polyline points="1227,498 1227,584 1200,584" fill="none" stroke="#14B8A6" stroke-width="4"/>
+  <polygon points="1200,574 1182,584 1200,594" fill="#14B8A6"/>
+
+  <rect x="730" y="596" width="592" height="150" rx="26" fill="url(#evidence)" stroke="#A5B4FC" stroke-width="2"/>
+  <text x="760" y="631" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#1E3A8A">最小证据路径</text>
+  <text x="1290" y="631" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#64748B">可解释 · 可回溯</text>
+
+  <line x1="818" y1="682" x2="986" y2="682" stroke="#6366F1" stroke-width="4"/>
+  <polygon points="986,673 1002,682 986,691" fill="#6366F1"/>
+  <line x1="1047" y1="682" x2="1215" y2="682" stroke="#14B8A6" stroke-width="4"/>
+  <polygon points="1215,673 1231,682 1215,691" fill="#14B8A6"/>
+  <circle cx="798" cy="682" r="20" fill="#2563EB"/>
+  <circle cx="1027" cy="682" r="20" fill="#7C3AED"/>
+  <circle cx="1251" cy="682" r="20" fill="#0D9488"/>
+  <text x="798" y="717" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#1E3A8A">种子任务</text>
+  <text x="1027" y="717" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#5B21B6">支持关系</text>
+  <text x="1251" y="717" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#0F766E">关联经验</text>
+
+  <rect x="1390" y="185" width="340" height="600" rx="30" fill="#111827"/>
+  <rect x="1418" y="207" width="116" height="32" rx="16" fill="#312E81"/>
+  <text x="1476" y="229" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#C7D2FE">传播约束</text>
+  <text x="1418" y="273" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700" fill="#FFFFFF">只在可信范围内涌现</text>
+
+  <rect x="1418" y="300" width="284" height="88" rx="18" fill="#1E293B" stroke="#334155"/>
+  <circle cx="1450" cy="332" r="14" fill="#3B82F6"/>
+  <text x="1478" y="337" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#FFFFFF">关系置信度</text>
+  <text x="1450" y="367" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#CBD5E1">仅传播达到阈值的支持边</text>
+
+  <rect x="1418" y="402" width="284" height="88" rx="18" fill="#1E293B" stroke="#334155"/>
+  <circle cx="1450" cy="434" r="14" fill="#8B5CF6"/>
+  <text x="1478" y="439" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#FFFFFF">最大跳数</text>
+  <text x="1450" y="469" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#CBD5E1">有限深度，抑制远距噪声</text>
+
+  <rect x="1418" y="504" width="284" height="88" rx="18" fill="#1E293B" stroke="#334155"/>
+  <circle cx="1450" cy="536" r="14" fill="#14B8A6"/>
+  <text x="1478" y="541" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#FFFFFF">记忆状态</text>
+  <text x="1450" y="571" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#CBD5E1">仅活跃、可用记忆参与</text>
+
+  <rect x="1418" y="606" width="284" height="150" rx="18" fill="#1E293B" stroke="#334155"/>
+  <circle cx="1450" cy="638" r="14" fill="#F59E0B"/>
+  <text x="1478" y="643" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#FFFFFF">四级作用域</text>
+  <line x1="1450" y1="688" x2="1668" y2="688" stroke="#475569" stroke-width="3"/>
+  <circle cx="1450" cy="688" r="8" fill="#FBBF24"/>
+  <circle cx="1523" cy="688" r="8" fill="#FBBF24"/>
+  <circle cx="1596" cy="688" r="8" fill="#FBBF24"/>
+  <circle cx="1668" cy="688" r="8" fill="#FBBF24"/>
+  <text x="1450" y="719" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#E2E8F0">租户</text>
+  <text x="1523" y="719" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#E2E8F0">工作区</text>
+  <text x="1596" y="719" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#E2E8F0">用户</text>
+  <text x="1668" y="719" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#E2E8F0">Agent</text>
+
+  <rect x="70" y="825" width="1660" height="240" rx="30" fill="#FFF7F7" stroke="#FECACA" stroke-width="2"/>
+  <rect x="94" y="847" width="126" height="32" rx="16" fill="#FEE2E2"/>
+  <text x="157" y="869" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="16" font-weight="700" fill="#B91C1C">反事实验证</text>
+  <text x="240" y="870" font-family="Noto Sans SC, sans-serif" font-size="18" fill="#7F1D1D">任一关键条件失效，关联结果都应消失</text>
+
+  <rect x="110" y="900" width="480" height="125" rx="22" fill="#FFFFFF" stroke="#FCA5A5" stroke-width="2"/>
+  <rect x="110" y="900" width="10" height="125" rx="5" fill="#EF4444"/>
+  <circle cx="155" cy="938" r="18" fill="#FEE2E2"/>
+  <line x1="147" y1="930" x2="163" y2="946" stroke="#DC2626" stroke-width="4"/>
+  <line x1="163" y1="930" x2="147" y2="946" stroke="#DC2626" stroke-width="4"/>
+  <text x="186" y="944" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#7F1D1D">关系拒绝</text>
+  <text x="145" y="985" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#64748B">支持边失效，传播立即中止</text>
+  <rect x="405" y="930" width="150" height="38" rx="19" fill="#FEF2F2"/>
+  <text x="480" y="955" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#DC2626">关联结果消失</text>
+
+  <rect x="660" y="900" width="480" height="125" rx="22" fill="#FFFFFF" stroke="#FCA5A5" stroke-width="2"/>
+  <rect x="660" y="900" width="10" height="125" rx="5" fill="#EF4444"/>
+  <circle cx="705" cy="938" r="18" fill="#FEE2E2"/>
+  <line x1="695" y1="938" x2="715" y2="938" stroke="#DC2626" stroke-width="4"/>
+  <text x="736" y="944" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#7F1D1D">跨 Agent</text>
+  <text x="695" y="985" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#64748B">作用域阻断，不读取私有记忆</text>
+  <rect x="955" y="930" width="150" height="38" rx="19" fill="#FEF2F2"/>
+  <text x="1030" y="955" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#DC2626">关联结果消失</text>
+
+  <rect x="1210" y="900" width="480" height="125" rx="22" fill="#FFFFFF" stroke="#FCA5A5" stroke-width="2"/>
+  <rect x="1210" y="900" width="10" height="125" rx="5" fill="#EF4444"/>
+  <circle cx="1255" cy="938" r="18" fill="#FEE2E2"/>
+  <rect x="1247" y="928" width="16" height="20" rx="3" fill="none" stroke="#DC2626" stroke-width="3"/>
+  <line x1="1249" y1="933" x2="1261" y2="933" stroke="#DC2626" stroke-width="3"/>
+  <text x="1286" y="944" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#7F1D1D">终态记忆</text>
+  <text x="1245" y="985" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#64748B">生命周期过滤，不再参与传播</text>
+  <rect x="1505" y="930" width="150" height="38" rx="19" fill="#FEF2F2"/>
+  <text x="1580" y="955" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#DC2626">关联结果消失</text>
+</svg>

@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07111F"/>
+      <stop offset="100%" stop-color="#102A3A"/>
+    </linearGradient>
+    <linearGradient id="gate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#57F0B8"/>
+      <stop offset="100%" stop-color="#22B985"/>
+    </linearGradient>
+    <linearGradient id="longmem" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3FD9FF"/>
+      <stop offset="100%" stop-color="#2F8FFF"/>
+    </linearGradient>
+    <linearGradient id="locomo" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B997FF"/>
+      <stop offset="100%" stop-color="#775BFF"/>
+    </linearGradient>
+    <linearGradient id="notice" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#17304A"/>
+      <stop offset="50%" stop-color="#20445A"/>
+      <stop offset="100%" stop-color="#17304A"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1200" rx="36" fill="url(#bg)"/>
+  <path d="M96 154 H1504" stroke="#A7C1D4" stroke-width="1" opacity="0.18"/>
+
+  <rect x="96" y="64" width="8" height="70" rx="4" fill="#42D3FF"/>
+  <text x="128" y="100" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="42" font-weight="700">首轮量化结果总览</text>
+  <text x="128" y="132" fill="#9CB6C8" font-family="Noto Sans SC, sans-serif" font-size="18">验证闭环全部通过 · 两套长期记忆检索基准完成首轮测量</text>
+  <rect x="1318" y="75" width="186" height="48" rx="24" fill="#112D3D" stroke="#42D3FF" stroke-width="1.5"/>
+  <circle cx="1350" cy="99" r="7" fill="#57F0B8"/>
+  <text x="1370" y="106" fill="#DFF7FF" font-family="Noto Sans SC, sans-serif" font-size="18" font-weight="600">首轮量化</text>
+
+  <text x="96" y="201" fill="#D9E8F2" font-family="Noto Sans SC, sans-serif" font-size="24" font-weight="700">质量门禁</text>
+  <text x="224" y="201" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="16">4 项验证 · 全量通过</text>
+
+  <path d="M274 312 H1326" stroke="#214052" stroke-width="5" stroke-linecap="round"/>
+  <path d="M274 312 H1326" stroke="#38DDA0" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+
+  <g filter="url(#shadow)">
+    <circle cx="274" cy="312" r="78" fill="#0C2030" stroke="#1F4B4B" stroke-width="16"/>
+    <circle cx="274" cy="312" r="78" fill="none" stroke="url(#gate)" stroke-width="16"/>
+    <circle cx="274" cy="312" r="54" fill="#0E2A34"/>
+    <path d="M246 313 L266 333 L305 289" fill="none" stroke="#57F0B8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="274" y="402" fill="#F3FBFF" font-family="Noto Sans SC, sans-serif" font-size="29" font-weight="700" text-anchor="middle">162/162</text>
+    <text x="274" y="434" fill="#9CB6C8" font-family="Noto Sans SC, sans-serif" font-size="19" text-anchor="middle">领域行为测试</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <circle cx="625" cy="312" r="78" fill="#0C2030" stroke="#1F4B4B" stroke-width="16"/>
+    <circle cx="625" cy="312" r="78" fill="none" stroke="url(#gate)" stroke-width="16"/>
+    <circle cx="625" cy="312" r="54" fill="#0E2A34"/>
+    <path d="M597 313 L617 333 L656 289" fill="none" stroke="#57F0B8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="625" y="402" fill="#F3FBFF" font-family="Noto Sans SC, sans-serif" font-size="29" font-weight="700" text-anchor="middle">3/3</text>
+    <text x="625" y="434" fill="#9CB6C8" font-family="Noto Sans SC, sans-serif" font-size="19" text-anchor="middle">Harness 生命周期</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <circle cx="976" cy="312" r="78" fill="#0C2030" stroke="#1F4B4B" stroke-width="16"/>
+    <circle cx="976" cy="312" r="78" fill="none" stroke="url(#gate)" stroke-width="16"/>
+    <circle cx="976" cy="312" r="54" fill="#0E2A34"/>
+    <path d="M948 313 L968 333 L1007 289" fill="none" stroke="#57F0B8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="976" y="402" fill="#F3FBFF" font-family="Noto Sans SC, sans-serif" font-size="29" font-weight="700" text-anchor="middle">8/8</text>
+    <text x="976" y="434" fill="#9CB6C8" font-family="Noto Sans SC, sans-serif" font-size="19" text-anchor="middle">运行时健康</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <circle cx="1327" cy="312" r="78" fill="#0C2030" stroke="#1F4B4B" stroke-width="16"/>
+    <circle cx="1327" cy="312" r="78" fill="none" stroke="url(#gate)" stroke-width="16"/>
+    <circle cx="1327" cy="312" r="54" fill="#0E2A34"/>
+    <path d="M1299 313 L1319 333 L1358 289" fill="none" stroke="#57F0B8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1327" y="402" fill="#F3FBFF" font-family="Noto Sans SC, sans-serif" font-size="29" font-weight="700" text-anchor="middle">6/6</text>
+    <text x="1327" y="434" fill="#9CB6C8" font-family="Noto Sans SC, sans-serif" font-size="19" text-anchor="middle">真实 Graph 正负对照</text>
+  </g>
+
+  <text x="96" y="514" fill="#D9E8F2" font-family="Noto Sans SC, sans-serif" font-size="24" font-weight="700">L0 证据检索基准</text>
+  <text x="304" y="514" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="16">同一百分比刻度 · 越长表示召回越高</text>
+
+  <g filter="url(#shadow)">
+    <path d="M96 548 Q96 524 120 524 H754 Q778 524 778 548 V1000 Q778 1024 754 1024 H120 Q96 1024 96 1000 Z" fill="#0B1D2C" stroke="#21455A" stroke-width="1.5"/>
+    <path d="M96 548 Q96 524 120 524 H754 Q778 524 778 548 V608 H96 Z" fill="#0E293B"/>
+    <circle cx="132" cy="566" r="10" fill="#42D3FF"/>
+    <text x="156" y="575" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="28" font-weight="700">LongMemEval</text>
+    <rect x="623" y="546" width="119" height="40" rx="20" fill="#133B4F"/>
+    <text x="683" y="573" fill="#BDEEFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="600" text-anchor="middle">100 题</text>
+
+    <text x="304" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14">0</text>
+    <text x="482" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">50</text>
+    <text x="662" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="end">100%</text>
+    <line x1="302" y1="646" x2="302" y2="876" stroke="#365568" stroke-width="1"/>
+    <line x1="482" y1="646" x2="482" y2="876" stroke="#365568" stroke-width="1" stroke-dasharray="5 7"/>
+    <line x1="662" y1="646" x2="662" y2="876" stroke="#365568" stroke-width="1"/>
+
+    <text x="126" y="689" fill="#B8CAD6" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@1</text>
+    <rect x="302" y="670" width="360" height="24" rx="12" fill="#142E3D"/>
+    <rect x="302" y="670" width="169.2" height="24" rx="12" fill="url(#longmem)"/>
+    <circle cx="471.2" cy="682" r="6" fill="#D7F8FF"/>
+    <text x="720" y="690" fill="#E6F8FF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">47%</text>
+
+    <text x="126" y="749" fill="#B8CAD6" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@5</text>
+    <rect x="302" y="730" width="360" height="24" rx="12" fill="#142E3D"/>
+    <rect x="302" y="730" width="262.8" height="24" rx="12" fill="url(#longmem)"/>
+    <circle cx="564.8" cy="742" r="6" fill="#D7F8FF"/>
+    <text x="720" y="750" fill="#E6F8FF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">73%</text>
+
+    <text x="126" y="809" fill="#B8CAD6" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@10</text>
+    <rect x="302" y="790" width="360" height="24" rx="12" fill="#142E3D"/>
+    <rect x="302" y="790" width="288" height="24" rx="12" fill="url(#longmem)"/>
+    <circle cx="590" cy="802" r="6" fill="#D7F8FF"/>
+    <text x="720" y="810" fill="#E6F8FF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">80%</text>
+
+    <text x="126" y="869" fill="#B8CAD6" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-all@10</text>
+    <rect x="302" y="850" width="360" height="24" rx="12" fill="#142E3D"/>
+    <rect x="302" y="850" width="223.2" height="24" rx="12" fill="url(#longmem)"/>
+    <circle cx="525.2" cy="862" r="6" fill="#D7F8FF"/>
+    <text x="720" y="870" fill="#E6F8FF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">62%</text>
+
+    <path d="M126 914 H748" stroke="#274456" stroke-width="1"/>
+    <circle cx="165" cy="960" r="26" fill="#14384B" stroke="#42D3FF" stroke-width="3"/>
+    <path d="M151 964 L161 974 L181 946" fill="none" stroke="#42D3FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="210" y="950" fill="#8EAABC" font-family="Noto Sans SC, sans-serif" font-size="16">MRR</text>
+    <text x="210" y="984" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="30" font-weight="700">58.48%</text>
+    <path d="M430 972 C462 934 520 934 552 972" fill="none" stroke="#27485D" stroke-width="10" stroke-linecap="round"/>
+    <path d="M430 972 C450 948 480 940 507 947" fill="none" stroke="#F5BE63" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="507" cy="947" r="7" fill="#FFE0A5"/>
+    <text x="584" y="950" fill="#8EAABC" font-family="Noto Sans SC, sans-serif" font-size="16">p95</text>
+    <text x="584" y="984" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="28" font-weight="700">468.39 ms</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M822 548 Q822 524 846 524 H1480 Q1504 524 1504 548 V1000 Q1504 1024 1480 1024 H846 Q822 1024 822 1000 Z" fill="#0B1D2C" stroke="#3B3765" stroke-width="1.5"/>
+    <path d="M822 548 Q822 524 846 524 H1480 Q1504 524 1504 548 V608 H822 Z" fill="#211D42"/>
+    <circle cx="858" cy="566" r="10" fill="#A783FF"/>
+    <text x="882" y="575" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="28" font-weight="700">LoCoMo</text>
+    <rect x="1241" y="546" width="227" height="40" rx="20" fill="#302B59"/>
+    <text x="1355" y="573" fill="#E5DCFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="600" text-anchor="middle">全集 1986 题 · 1982 可评分</text>
+
+    <text x="1030" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14">0</text>
+    <text x="1208" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="middle">50</text>
+    <text x="1388" y="636" fill="#6F8EA3" font-family="Noto Sans SC, sans-serif" font-size="14" text-anchor="end">100%</text>
+    <line x1="1028" y1="646" x2="1028" y2="876" stroke="#474264" stroke-width="1"/>
+    <line x1="1208" y1="646" x2="1208" y2="876" stroke="#474264" stroke-width="1" stroke-dasharray="5 7"/>
+    <line x1="1388" y1="646" x2="1388" y2="876" stroke="#474264" stroke-width="1"/>
+
+    <text x="852" y="689" fill="#C5BEDC" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@1</text>
+    <rect x="1028" y="670" width="360" height="24" rx="12" fill="#24223A"/>
+    <rect x="1028" y="670" width="52.848" height="24" rx="12" fill="url(#locomo)"/>
+    <circle cx="1080.848" cy="682" r="6" fill="#EEE9FF"/>
+    <text x="1446" y="690" fill="#F1EDFF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">14.68%</text>
+
+    <text x="852" y="749" fill="#C5BEDC" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@5</text>
+    <rect x="1028" y="730" width="360" height="24" rx="12" fill="#24223A"/>
+    <rect x="1028" y="730" width="99.9" height="24" rx="12" fill="url(#locomo)"/>
+    <circle cx="1127.9" cy="742" r="6" fill="#EEE9FF"/>
+    <text x="1446" y="750" fill="#F1EDFF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">27.75%</text>
+
+    <text x="852" y="809" fill="#C5BEDC" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-any@10</text>
+    <rect x="1028" y="790" width="360" height="24" rx="12" fill="#24223A"/>
+    <rect x="1028" y="790" width="133.668" height="24" rx="12" fill="url(#locomo)"/>
+    <circle cx="1161.668" cy="802" r="6" fill="#EEE9FF"/>
+    <text x="1446" y="810" fill="#F1EDFF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">37.13%</text>
+
+    <text x="852" y="869" fill="#C5BEDC" font-family="Noto Sans SC, sans-serif" font-size="17">Recall-all@10</text>
+    <rect x="1028" y="850" width="360" height="24" rx="12" fill="#24223A"/>
+    <rect x="1028" y="850" width="114.084" height="24" rx="12" fill="url(#locomo)"/>
+    <circle cx="1142.084" cy="862" r="6" fill="#EEE9FF"/>
+    <text x="1446" y="870" fill="#F1EDFF" font-family="Noto Sans SC, sans-serif" font-size="20" font-weight="700" text-anchor="end">31.69%</text>
+
+    <path d="M852 914 H1474" stroke="#383651" stroke-width="1"/>
+    <circle cx="891" cy="960" r="26" fill="#2B2850" stroke="#A783FF" stroke-width="3"/>
+    <path d="M877 964 L887 974 L907 946" fill="none" stroke="#B997FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="936" y="950" fill="#9F98B9" font-family="Noto Sans SC, sans-serif" font-size="16">MRR</text>
+    <text x="936" y="984" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="30" font-weight="700">20.68%</text>
+    <path d="M1156 972 C1188 934 1246 934 1278 972" fill="none" stroke="#3F3A63" stroke-width="10" stroke-linecap="round"/>
+    <path d="M1156 972 C1178 946 1212 939 1240 949" fill="none" stroke="#57D7C3" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="1240" cy="949" r="7" fill="#C9FFF7"/>
+    <text x="1310" y="950" fill="#9F98B9" font-family="Noto Sans SC, sans-serif" font-size="16">p95</text>
+    <text x="1310" y="984" fill="#F4FAFF" font-family="Noto Sans SC, sans-serif" font-size="28" font-weight="700">78.95 ms</text>
+  </g>
+
+  <path d="M116 1070 H1484 Q1504 1070 1504 1090 V1140 Q1504 1160 1484 1160 H116 Q96 1160 96 1140 V1090 Q96 1070 116 1070 Z" fill="url(#notice)" stroke="#3A6980" stroke-width="1.5"/>
+  <polygon points="140,1115 152,1103 164,1115 152,1127" fill="#F5BE63"/>
+  <text x="800" y="1124" fill="#FFF4D8" font-family="Noto Sans SC, sans-serif" font-size="27" font-weight="700" text-anchor="middle">L0 证据检索基线，不是最终问答准确率</text>
+  <polygon points="1436,1115 1448,1103 1460,1115 1448,1127" fill="#F5BE63"/>
+</svg>

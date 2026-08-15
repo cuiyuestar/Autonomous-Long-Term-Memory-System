@@ -280,10 +280,12 @@ def _ndcg(
     gold: set[str],
     top_k: int,
 ) -> float:
-    relevance = [
-        1.0 if gold.intersection(evidence_ids) else 0.0
-        for evidence_ids in candidate_evidence[:top_k]
-    ]
+    seen_gold: set[str] = set()
+    relevance: list[float] = []
+    for evidence_ids in candidate_evidence[:top_k]:
+        new_gold = gold.intersection(evidence_ids).difference(seen_gold)
+        relevance.append(1.0 if new_gold else 0.0)
+        seen_gold.update(new_gold)
     dcg = sum(
         score / math.log2(rank + 1.0)
         for rank, score in enumerate(relevance, start=1)

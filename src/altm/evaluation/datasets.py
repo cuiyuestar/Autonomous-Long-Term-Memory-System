@@ -46,12 +46,15 @@ def load_longmemeval(path: str | Path, limit: int | None = None) -> BenchmarkDat
             for turn_index, raw_turn in enumerate(
                 _object_list(raw_session, "LongMemEval session"),
             ):
+                content = _optional_text(raw_turn.get("content"))
+                if content is None:
+                    continue
                 turn_id = "%s:turn:%s" % (session_id, turn_index)
                 turns.append(
                     BenchmarkTurn(
                         id=turn_id,
                         role=_message_role(raw_turn.get("role")),
-                        content=_required_text(raw_turn, "content"),
+                        content=content,
                         created_at=created_at or _FALLBACK_TIME,
                         evidence_ids=[session_id, turn_id],
                         metadata={

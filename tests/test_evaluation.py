@@ -17,6 +17,94 @@ from altm.evaluation import (  # noqa: E402
 
 
 class EvaluationTest(unittest.TestCase):
+    def test_ndcg_counts_each_gold_session_once(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            dataset_path = root / "longmemeval.json"
+            dataset_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "question_id": "q-duplicate-session",
+                            "question_type": "single-session-user",
+                            "question": "What is the release deadline?",
+                            "answer": "September 1, 2026",
+                            "question_date": "2026-08-09",
+                            "haystack_session_ids": ["s1"],
+                            "haystack_dates": ["2026-08-01T00:00:00+00:00"],
+                            "haystack_sessions": [
+                                [
+                                    {
+                                        "role": "user",
+                                        "content": (
+                                            "The release deadline is September 1, 2026."
+                                        ),
+                                    },
+                                    {
+                                        "role": "assistant",
+                                        "content": (
+                                            "Confirmed: the release deadline remains "
+                                            "September 1, 2026."
+                                        ),
+                                    },
+                                ]
+                            ],
+                            "answer_session_ids": ["s1"],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            report = AltmBenchmarkRunner(
+                root / "benchmark.sqlite3",
+                top_ks=[5],
+            ).run(load_longmemeval(dataset_path))
+
+            self.assertEqual(report.aggregate.metrics["ndcg@5"], 1.0)
+
+    def test_longmemeval_loader_skips_empty_turns_and_preserves_source_index(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "longmemeval.json"
+            path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "question_id": "q-empty-turn",
+                            "question_type": "single-session-user",
+                            "question": "What is the release deadline?",
+                            "answer": "September 1, 2026",
+                            "question_date": "2026-08-09",
+                            "haystack_session_ids": ["s1"],
+                            "haystack_dates": ["2026-08-01T00:00:00+00:00"],
+                            "haystack_sessions": [
+                                [
+                                    {"role": "user", "content": ""},
+                                    {
+                                        "role": "user",
+                                        "content": (
+                                            "The release deadline is September 1, 2026."
+                                        ),
+                                        "has_answer": True,
+                                    },
+                                ]
+                            ],
+                            "answer_session_ids": ["s1"],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            dataset = load_longmemeval(path)
+
+            turns = dataset.corpora[0].sessions[0].turns
+            self.assertEqual(len(turns), 1)
+            self.assertEqual(turns[0].id, "s1:turn:1")
+            self.assertEqual(turns[0].evidence_ids, ["s1", "s1:turn:1"])
+
     def test_longmemeval_loader_and_native_retrieval_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

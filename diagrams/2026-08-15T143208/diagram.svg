@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1260" viewBox="0 0 2400 1260" role="img" aria-label="端到端测试与验证证据链">
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="0.48" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="loopA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="loopB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="2360" height="1220" rx="38" fill="url(#canvas)" stroke="#334155" stroke-width="2"/>
+  <circle cx="90" cy="92" r="38" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+  <path d="M72 94 L86 108 L111 77" fill="none" stroke="#10B981" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="145" y="90" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="34" font-weight="700">端到端测试与验证证据链</text>
+  <text x="145" y="132" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="18">从可判定行为到可审计结果，逐层建立可复现、可比较的验证证据</text>
+
+  <rect x="665" y="72" width="1645" height="64" rx="32" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+  <text x="710" y="111" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="16">证据成熟度</text>
+  <line x1="835" y1="104" x2="2220" y2="104" stroke="url(#rail)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="860" cy="104" r="8" fill="#3B82F6"/>
+  <circle cx="1125" cy="104" r="8" fill="#8B5CF6"/>
+  <circle cx="1390" cy="104" r="8" fill="#8B5CF6"/>
+  <circle cx="1655" cy="104" r="8" fill="#10B981"/>
+  <circle cx="1920" cy="104" r="8" fill="#10B981"/>
+  <circle cx="2190" cy="104" r="8" fill="#3B82F6"/>
+  <text x="860" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可判定</text>
+  <text x="1125" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可组合</text>
+  <text x="1390" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可观测</text>
+  <text x="1655" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可解释</text>
+  <text x="1920" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可对标</text>
+  <text x="2190" y="129" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="12">可审计</text>
+
+  <rect x="486" y="158" width="1428" height="38" rx="19" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+  <text x="1200" y="183" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">行为判定 → 生命周期 → 运行态 → 涌现关系 → 基准对照 → 审计回放</text>
+
+  <polyline points="370,435 432,435" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="452,435 430,422 430,448" fill="#3B82F6"/>
+  <polyline points="766,435 828,435" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="848,435 826,422 826,448" fill="#8B5CF6"/>
+  <polyline points="1162,435 1224,435" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1244,435 1222,422 1222,448" fill="#8B5CF6"/>
+  <polyline points="1558,435 1620,435" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1640,435 1618,422 1618,448" fill="#10B981"/>
+  <polyline points="1954,435 2016,435" fill="none" stroke="#475569" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="2036,435 2014,422 2014,448" fill="#10B981"/>
+
+  <g filter="url(#softShadow)">
+    <circle cx="210" cy="222" r="29" fill="#2563EB" stroke="#3B82F6" stroke-width="3"/>
+    <text x="210" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">01</text>
+    <line x1="210" y1="251" x2="210" y2="270" stroke="#3B82F6" stroke-width="3"/>
+    <polygon points="90,260 330,260 360,290 360,590 330,620 90,620 60,590 60,290" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+    <text x="210" y="292" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">规格证据</text>
+    <text x="210" y="343" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700">行为与指标公式</text>
+    <text x="210" y="397" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">行为判定：结果与预期一致</text>
+    <text x="210" y="429" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">准确率 = 正确结果 ÷ 总结果</text>
+    <text x="210" y="461" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">召回率 = 命中项 ÷ 全部相关项</text>
+    <rect x="88" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+    <text x="210" y="520" text-anchor="middle" fill="#60A5FA" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="210" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">公式可重算</text>
+    <text x="210" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">断言可判定</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="606" cy="222" r="29" fill="#7C3AED" stroke="#8B5CF6" stroke-width="3"/>
+    <text x="606" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">02</text>
+    <line x1="606" y1="251" x2="606" y2="270" stroke="#8B5CF6" stroke-width="3"/>
+    <polygon points="486,260 726,260 756,290 756,590 726,620 486,620 456,590 456,290" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+    <text x="606" y="292" text-anchor="middle" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">组合证据</text>
+    <text x="606" y="343" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700">组合生命周期</text>
+    <text x="606" y="397" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">装配 · 启动 · 停用 · 重启</text>
+    <text x="606" y="429" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">正常路径与异常路径并行覆盖</text>
+    <text x="606" y="461" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">记录顺序、资源状态与恢复结果</text>
+    <rect x="484" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+    <text x="606" y="520" text-anchor="middle" fill="#A78BFA" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="606" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">顺序确定</text>
+    <text x="606" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">资源完整回收</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="1002" cy="222" r="29" fill="#7C3AED" stroke="#8B5CF6" stroke-width="3"/>
+    <text x="1002" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">03</text>
+    <line x1="1002" y1="251" x2="1002" y2="270" stroke="#8B5CF6" stroke-width="3"/>
+    <polygon points="882,260 1122,260 1152,290 1152,590 1122,620 882,620 852,590 852,290" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+    <text x="1002" y="292" text-anchor="middle" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">运行证据</text>
+    <text x="1002" y="331" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="24" font-weight="700">运行时健康</text>
+    <text x="1002" y="361" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="24" font-weight="700">与鉴权</text>
+    <text x="1002" y="409" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">探活 · 权限 · 凭据 · 故障态</text>
+    <text x="1002" y="441" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">保留健康信号与拒绝证据</text>
+    <text x="1002" y="470" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">覆盖正常、降级与失效状态</text>
+    <rect x="880" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#8B5CF6" stroke-width="2"/>
+    <text x="1002" y="520" text-anchor="middle" fill="#A78BFA" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="1002" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">健康可观测</text>
+    <text x="1002" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">越权被拒绝</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="1398" cy="222" r="29" fill="#059669" stroke="#10B981" stroke-width="3"/>
+    <text x="1398" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">04</text>
+    <line x1="1398" y1="251" x2="1398" y2="270" stroke="#10B981" stroke-width="3"/>
+    <polygon points="1278,260 1518,260 1548,290 1548,590 1518,620 1278,620 1248,590 1248,290" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+    <text x="1398" y="292" text-anchor="middle" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">涌现证据</text>
+    <text x="1398" y="343" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700">真实关系涌现</text>
+    <text x="1398" y="397" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">跨轮关联 · 图扩散 · 证据引用</text>
+    <text x="1398" y="429" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">不预置答案，不绕过真实链路</text>
+    <text x="1398" y="461" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">解释来源、关系与触发条件</text>
+    <rect x="1276" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+    <text x="1398" y="520" text-anchor="middle" fill="#34D399" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="1398" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">关系可解释</text>
+    <text x="1398" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">涌现稳定复现</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="1794" cy="222" r="29" fill="#059669" stroke="#10B981" stroke-width="3"/>
+    <text x="1794" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">05</text>
+    <line x1="1794" y1="251" x2="1794" y2="270" stroke="#10B981" stroke-width="3"/>
+    <polygon points="1674,260 1914,260 1944,290 1944,590 1914,620 1674,620 1644,590 1644,290" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+    <text x="1794" y="292" text-anchor="middle" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">基准证据</text>
+    <text x="1794" y="343" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700">公开数据集基线</text>
+    <text x="1794" y="397" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">固定样本 · 统一口径 · 对照组</text>
+    <text x="1794" y="429" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">准确性、召回率与稳定性</text>
+    <text x="1794" y="461" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">同条件重复运行并保留差异</text>
+    <rect x="1672" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+    <text x="1794" y="520" text-anchor="middle" fill="#34D399" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="1794" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">达到门槛</text>
+    <text x="1794" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">差异可解释</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <circle cx="2190" cy="222" r="29" fill="#2563EB" stroke="#3B82F6" stroke-width="3"/>
+    <text x="2190" y="230" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">06</text>
+    <line x1="2190" y1="251" x2="2190" y2="270" stroke="#3B82F6" stroke-width="3"/>
+    <polygon points="2070,260 2310,260 2340,290 2340,590 2310,620 2070,620 2040,590 2040,290" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+    <text x="2190" y="292" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">审计证据</text>
+    <text x="2190" y="343" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700">结果审计与回归</text>
+    <text x="2190" y="397" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">原始输入 · 运行记录 · 版本指纹</text>
+    <text x="2190" y="429" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">逐次对比 · 趋势追踪 · 回放复核</text>
+    <text x="2190" y="461" text-anchor="middle" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">结论与证据一一对应</text>
+    <rect x="2068" y="495" width="244" height="96" rx="16" fill="#0F172A" stroke="#3B82F6" stroke-width="2"/>
+    <text x="2190" y="520" text-anchor="middle" fill="#60A5FA" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700">通过条件</text>
+    <text x="2190" y="550" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">全链可追溯</text>
+    <text x="2190" y="576" text-anchor="middle" fill="#CBD5E1" font-family="Noto Sans SC, sans-serif" font-size="15">结果可复现</text>
+  </g>
+
+  <polyline points="606,640 606,662 1002,662 1002,640" fill="none" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="804" y1="662" x2="804" y2="718" stroke="#8B5CF6" stroke-width="3"/>
+  <polygon points="804,734 793,716 815,716" fill="#8B5CF6"/>
+  <text x="804" y="697" text-anchor="middle" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">任一条件未通过，进入闭环 ①</text>
+
+  <polyline points="1398,640 1398,662 2190,662 2190,640" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="1794" y1="662" x2="1794" y2="718" stroke="#10B981" stroke-width="3"/>
+  <polygon points="1794,734 1783,716 1805,716" fill="#10B981"/>
+  <text x="1794" y="697" text-anchor="middle" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700">任一条件未通过，进入闭环 ②</text>
+
+  <rect x="95" y="744" width="1040" height="448" rx="34" fill="#0F172A" fill-opacity="0.62" stroke="#334155" stroke-width="2"/>
+  <text x="135" y="786" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">闭环 ① · 组合与运行验证</text>
+  <text x="1095" y="786" text-anchor="end" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">异常路径也必须成为长期证据</text>
+
+  <path d="M390 950 C430 850 490 815 550 810" fill="none" stroke="url(#loopA)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M750 810 C820 820 890 865 920 940" fill="none" stroke="url(#loopA)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M920 1010 C880 1080 820 1125 765 1140" fill="none" stroke="url(#loopA)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M535 1140 C470 1120 410 1075 380 1010" fill="none" stroke="url(#loopA)" stroke-width="10" stroke-linecap="round"/>
+  <polygon points="482,844 459,849 474,867" fill="#8B5CF6"/>
+  <polygon points="865,869 843,859 847,883" fill="#3B82F6"/>
+  <polygon points="836,1101 849,1081 860,1103" fill="#3B82F6"/>
+  <polygon points="431,1080 454,1088 447,1064" fill="#8B5CF6"/>
+
+  <rect x="185" y="925" width="205" height="82" rx="41" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+  <text x="287" y="958" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">发现缺陷</text>
+  <text x="287" y="984" text-anchor="middle" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="13">异常路径残留</text>
+
+  <rect x="535" y="775" width="230" height="82" rx="41" fill="#1E293B" stroke="#8B5CF6" stroke-width="3"/>
+  <text x="650" y="808" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">回归用例</text>
+  <text x="650" y="834" text-anchor="middle" fill="#C4B5FD" font-family="Noto Sans SC, sans-serif" font-size="13">固化失效场景</text>
+
+  <rect x="920" y="925" width="180" height="82" rx="41" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+  <text x="1010" y="958" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">修复</text>
+  <text x="1010" y="984" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="13">恢复运行约束</text>
+
+  <rect x="520" y="1104" width="260" height="82" rx="41" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+  <text x="650" y="1137" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">全量复验</text>
+  <text x="650" y="1163" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="13">组合与鉴权全覆盖</text>
+
+  <ellipse cx="650" cy="978" rx="215" ry="90" fill="#1E293B" stroke="#475569" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="650" y="969" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700">发现缺陷 → 回归用例</text>
+  <text x="650" y="1003" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700">修复 → 全量复验</text>
+  <text x="650" y="1035" text-anchor="middle" fill="#A78BFA" font-family="Noto Sans SC, sans-serif" font-size="14">通过后回到主链继续积累证据</text>
+
+  <rect x="1265" y="744" width="1040" height="448" rx="34" fill="#0F172A" fill-opacity="0.62" stroke="#334155" stroke-width="2"/>
+  <text x="1305" y="786" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700">闭环 ② · 涌现与基线验证</text>
+  <text x="2265" y="786" text-anchor="end" fill="#94A3B8" font-family="Noto Sans SC, sans-serif" font-size="14">每次差异都回流为可复验资产</text>
+
+  <path d="M1560 950 C1600 850 1660 815 1720 810" fill="none" stroke="url(#loopB)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M1940 810 C2010 820 2075 865 2090 940" fill="none" stroke="url(#loopB)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M2090 1010 C2050 1080 1990 1125 1935 1140" fill="none" stroke="url(#loopB)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M1705 1140 C1640 1120 1580 1075 1550 1010" fill="none" stroke="url(#loopB)" stroke-width="10" stroke-linecap="round"/>
+  <polygon points="1652,844 1629,849 1644,867" fill="#10B981"/>
+  <polygon points="2035,869 2013,859 2017,883" fill="#3B82F6"/>
+  <polygon points="2006,1101 2019,1081 2030,1103" fill="#3B82F6"/>
+  <polygon points="1601,1080 1624,1088 1617,1064" fill="#10B981"/>
+
+  <rect x="1280" y="925" width="280" height="82" rx="41" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+  <text x="1420" y="958" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">发现缺陷</text>
+  <text x="1420" y="984" text-anchor="middle" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="13">基线波动或错误关联</text>
+
+  <rect x="1690" y="775" width="280" height="82" rx="41" fill="#1E293B" stroke="#10B981" stroke-width="3"/>
+  <text x="1830" y="808" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">回归用例</text>
+  <text x="1830" y="834" text-anchor="middle" fill="#6EE7B7" font-family="Noto Sans SC, sans-serif" font-size="13">固化样本与证据追踪</text>
+
+  <rect x="2060" y="925" width="220" height="82" rx="41" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+  <text x="2170" y="958" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">修复</text>
+  <text x="2170" y="984" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="13">校准关系与评估口径</text>
+
+  <rect x="1685" y="1104" width="290" height="82" rx="41" fill="#1E293B" stroke="#3B82F6" stroke-width="3"/>
+  <text x="1830" y="1137" text-anchor="middle" fill="#FFFFFF" font-family="Noto Sans SC, sans-serif" font-size="17" font-weight="700">全量复验</text>
+  <text x="1830" y="1163" text-anchor="middle" fill="#93C5FD" font-family="Noto Sans SC, sans-serif" font-size="13">真实链路与基线重跑</text>
+
+  <ellipse cx="1830" cy="978" rx="215" ry="90" fill="#1E293B" stroke="#475569" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="1830" y="969" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700">发现缺陷 → 回归用例</text>
+  <text x="1830" y="1003" text-anchor="middle" fill="#E2E8F0" font-family="Noto Sans SC, sans-serif" font-size="23" font-weight="700">修复 → 全量复验</text>
+  <text x="1830" y="1035" text-anchor="middle" fill="#34D399" font-family="Noto Sans SC, sans-serif" font-size="14">通过后更新基线并进入审计</text>
+
+  <text x="1200" y="1222" text-anchor="middle" fill="#64748B" font-family="Noto Sans SC, sans-serif" font-size="13">交付证据：行为断言 · 生命周期记录 · 健康与鉴权记录 · 关系引用 · 基线报告 · 审计索引</text>
+</svg>
