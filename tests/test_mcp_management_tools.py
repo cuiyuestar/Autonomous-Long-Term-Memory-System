@@ -67,6 +67,8 @@ class MCPManagementToolsTest(unittest.TestCase):
                     "memory_ui_graph_seeds",
                     "memory_ui_graph_neighborhood",
                     "memory_ui_layers",
+                    "memory_ui_embedding_status",
+                    "memory_ui_configure_embedding",
                     "memory_mvp_chat",
                     "memory_drilldown",
                     "memory_feedback",
@@ -118,6 +120,37 @@ class MCPManagementToolsTest(unittest.TestCase):
             )
             self.assertEqual(len(neighborhood["nodes"]), 2)
             self.assertEqual(len(neighborhood["edges"]), 1)
+
+    def test_runtime_ui_embedding_tools_configure_without_returning_the_key(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with patch.dict("os.environ", {}, clear=True):
+                    app = create_mcp_server(str(db_path))
+                    initial = _call_tool(app, "memory_ui_embedding_status", {})
+                    configured = _call_tool(
+                        app,
+                        "memory_ui_configure_embedding",
+                        {
+                            "base_url": "http://127.0.0.1:%s/v1" % server.server_port,
+                            "model": "runtime-ui-embedding",
+                            "api_key": "runtime-ui-secret",
+                        },
+                    )
+                    current = _call_tool(app, "memory_ui_embedding_status", {})
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+            self.assertFalse(initial["configured"])
+            self.assertTrue(configured["configured"])
+            self.assertEqual(current["model"], "runtime-ui-embedding")
+            self.assertNotIn("runtime-ui-secret", json.dumps(configured))
+            self.assertNotIn("api_key", current)
 
     def test_management_tools_are_registered(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

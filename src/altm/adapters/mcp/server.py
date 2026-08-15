@@ -203,6 +203,22 @@ def create_mcp_server(
         )
 
     @app.tool()
+    def memory_ui_embedding_status() -> dict[str, object]:
+        return service.embedding_status()
+
+    @app.tool()
+    def memory_ui_configure_embedding(
+        base_url: str,
+        model: str,
+        api_key: str | None = None,
+    ) -> dict[str, object]:
+        return service.configure_embedding(
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+        )
+
+    @app.tool()
     def memory_remember(
         session_id: str,
         content: str,
@@ -970,6 +986,8 @@ def create_mcp_server(
             "memory_ui_graph_seeds",
             "memory_ui_graph_neighborhood",
             "memory_ui_layers",
+            "memory_ui_embedding_status",
+            "memory_ui_configure_embedding",
             "memory_mvp_chat",
             "memory_drilldown",
             "memory_feedback",

@@ -235,6 +235,8 @@ export ALTM_EMBEDDING_API_KEY="your-api-key"
 export ALTM_EMBEDDING_MODEL="your-embedding-model"
 ```
 
+安装 DeepSeek Harness 插件后，也可以从侧栏底部的全局 Memory 面板进入 `Embedding 配置`，填写 OpenAI-compatible Base URL、模型名和 API Key。页面会先验证真实向量请求，再以本地 `0600` 文件保存；保存后 MCP 与 Worker 无需重启即可使用。
+
 初始化数据库：
 
 ```bash

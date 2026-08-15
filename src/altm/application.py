@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
@@ -63,9 +62,12 @@ from altm.lifecycle import (
 from altm.llm import (
     OpenAICompatibleClient,
     OpenAICompatibleEmbeddingClient,
-    embedding_config_from_env,
+    embedding_config_candidate,
+    embedding_config_from_sources,
+    embedding_config_status,
     llm_config_from_env,
-    optional_embedding_client_from_env,
+    optional_embedding_client_from_sources,
+    save_embedding_config,
 )
 from altm.retrieval import (
     FTSRetrievalEngine,
@@ -107,6 +109,37 @@ class AltmApplication:
 
     def initialize_store(self) -> None:
         self.store()
+
+    def embedding_status(self) -> dict[str, object]:
+        return embedding_config_status(self.db_path)
+
+    def configure_embedding(
+        self,
+        base_url: str,
+        model: str,
+        api_key: str | None = None,
+    ) -> dict[str, object]:
+        candidate = embedding_config_candidate(
+            self.db_path,
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+        )
+        try:
+            OpenAICompatibleEmbeddingClient(candidate).embed_text(
+                "ALTM embedding connection check"
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "Embedding provider validation failed; check the URL, model, and API key"
+            ) from exc
+        save_embedding_config(self.db_path, candidate)
+        return self.embedding_status()
+
+    def _embedding_model(self) -> str | None:
+        status = self.embedding_status()
+        model = status.get("model")
+        return model if isinstance(model, str) and model else None
 
     def remember(
         self,
@@ -975,9 +1008,9 @@ class AltmApplication:
         threshold: float = 0.82,
         limit: int = 1000,
     ) -> dict[str, object]:
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         if not embedding_model:
-            raise RuntimeError("Semantic L3 requires ALTM_EMBEDDING_MODEL")
+            raise RuntimeError("Semantic L3 requires a configured embedding model")
         memories = list(
             SemanticL3SceneBuilder(
                 self.store(scope),
@@ -1000,9 +1033,9 @@ class AltmApplication:
         threshold: float = 0.84,
         limit: int = 1000,
     ) -> dict[str, object]:
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         if not embedding_model:
-            raise RuntimeError("Semantic L4 requires ALTM_EMBEDDING_MODEL")
+            raise RuntimeError("Semantic L4 requires a configured embedding model")
         memories = list(
             SemanticL4PersonaDistiller(
                 self.store(scope),
@@ -1033,10 +1066,10 @@ class AltmApplication:
                 "edge_ids": [],
                 "candidates": [],
             }
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         if not embedding_model:
             raise RuntimeError(
-                "Missing embedding model. Set ALTM_EMBEDDING_MODEL or pass model."
+                "Missing embedding model. Configure an embedding provider or pass model."
             )
         candidates = CrossSessionL3CandidateFinder(self.store()).find(
             embedding_model=embedding_model,
@@ -1113,7 +1146,10 @@ class AltmApplication:
         scope: MemoryScope | None = None,
     ) -> Sequence[RecallCandidate]:
         store = self.store(scope)
-        return FTSRetrievalEngine(store, optional_embedding_client_from_env()).recall(
+        return FTSRetrievalEngine(
+            store,
+            optional_embedding_client_from_sources(self.db_path),
+        ).recall(
             RecallQuery(
                 text=query,
                 top_k=limit,
@@ -1209,7 +1245,10 @@ class AltmApplication:
         statuses: Sequence[str | MemoryStatus] | None = None,
     ) -> Sequence[RecallCandidate]:
         store = self.store()
-        direct_retriever = FTSRetrievalEngine(store, optional_embedding_client_from_env())
+        direct_retriever = FTSRetrievalEngine(
+            store,
+            optional_embedding_client_from_sources(self.db_path),
+        )
         return QueryEmergenceEngine(store, direct_retriever).emerge(
             RecallQuery(
                 text=query,
@@ -1398,7 +1437,9 @@ class AltmApplication:
         limit: int = 100,
         scope: MemoryScope | None = None,
     ) -> dict[str, object]:
-        client = OpenAICompatibleEmbeddingClient(embedding_config_from_env())
+        client = OpenAICompatibleEmbeddingClient(
+            embedding_config_from_sources(self.db_path)
+        )
         indexed = EmbeddingIndexer(self.store(scope), client).index_missing(limit=limit)
         return {
             "embedding_model": client.config.model,
@@ -1425,7 +1466,7 @@ class AltmApplication:
         allow_second_confirm_review_actions: bool = False,
         dry_run: bool = False,
     ) -> dict[str, object]:
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         steps: dict[str, object] = {}
 
         if index_embeddings:
@@ -1557,7 +1598,7 @@ class AltmApplication:
         dry_run: bool = False,
         limit: int = 1000,
     ) -> dict[str, object]:
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         return AutonomousGovernanceEngine(self.store()).run(
             embedding_model=embedding_model,
             semantic_threshold=semantic_threshold,
@@ -1629,10 +1670,10 @@ class AltmApplication:
         auto_merge_threshold: float = 0.97,
         auto_tombstone_threshold: float = 0.97,
     ) -> dict[str, object]:
-        embedding_model = model or os.environ.get("ALTM_EMBEDDING_MODEL")
+        embedding_model = model or self._embedding_model()
         if not embedding_model:
             raise RuntimeError(
-                "Missing embedding model. Set ALTM_EMBEDDING_MODEL or pass model."
+                "Missing embedding model. Configure an embedding provider or pass model."
             )
 
         semantic_mode = _semantic_dedup_mode(mode)
@@ -1925,7 +1966,7 @@ class AltmApplication:
         parsed_statuses = _memory_statuses(statuses)
         recall_candidates = FTSRetrievalEngine(
             store,
-            optional_embedding_client_from_env(),
+            optional_embedding_client_from_sources(self.db_path),
         ).recall(
             RecallQuery(
                 text=query,

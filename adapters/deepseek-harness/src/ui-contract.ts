@@ -63,6 +63,19 @@ export interface UiMemoryLayers {
   layers: Record<UiMemoryLayer, UiMemoryUnit[]>;
 }
 
+export interface UiEmbeddingStatus {
+  configured: boolean;
+  source: "managed" | "environment" | null;
+  base_url: string;
+  model: string;
+}
+
+export interface UiEmbeddingConfigInput {
+  baseUrl: string;
+  model: string;
+  apiKey?: string;
+}
+
 export interface UiError {
   error: string;
 }

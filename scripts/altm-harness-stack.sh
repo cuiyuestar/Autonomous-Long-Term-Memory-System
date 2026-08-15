@@ -8,13 +8,33 @@ RUN_DIR="$ALTM_ROOT/data/altm-harness-run"
 LOG_DIR="$RUN_DIR/logs"
 PLUGIN_STATE_FILE="$RUN_DIR/plugin-state"
 DB_PATH="${ALTM_HARNESS_DB:-$ALTM_ROOT/data/deepseek-harness.sqlite3}"
-NODE_BIN="${DSH_NODE_BIN:-}"
 LOCAL_BIN="$ALTM_ROOT/data/bin"
 PROFILE="${ALTM_HARNESS_PROFILE:-web}"
 MCP_PORT="${ALTM_MCP_PORT:-8000}"
 WEB_PORT="${DSH_WEB_PORT:-3000}"
 PYTHON="$ALTM_ROOT/.venv/bin/python"
 
+select_node_bin() {
+  local preferred="${1:-}"
+  local candidate version major minor
+  for candidate in \
+    "$preferred" \
+    "$HOME/.local/share/node-current/bin" \
+    "/opt/homebrew/bin" \
+    "/usr/local/bin"; do
+    [[ -n "$candidate" && -x "$candidate/node" ]] || continue
+    version="$("$candidate/node" -p 'process.versions.node')"
+    IFS=. read -r major minor _ <<<"$version"
+    if (( major >= 24 || (major == 22 && minor >= 19) )); then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  echo "DeepSeek Harness requires Node ^22.19 or >=24; set DSH_NODE_BIN" >&2
+  return 1
+}
+
+NODE_BIN="$(select_node_bin "${DSH_NODE_BIN:-}")"
 export PATH="$LOCAL_BIN${NODE_BIN:+:$NODE_BIN}:$PATH"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$ALTM_ROOT/data/xdg-state}"
 export PYTHONUNBUFFERED=1

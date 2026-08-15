@@ -1,0 +1,155 @@
+.root {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  padding: 24px 28px 28px;
+  box-sizing: border-box;
+  color: var(--dsw-alias-label-primary);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+.heading h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.heading p {
+  max-width: 540px;
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 21px;
+}
+
+.status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.status[data-configured] span {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 20px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.form input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  outline: none;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+  font: inherit;
+  font-size: 13px;
+}
+
+.form input:hover {
+  border-color: var(--dsw-alias-border-l1);
+}
+
+.form input:focus {
+  border-color: var(--dsw-alias-label-primary-bluish);
+}
+
+.form input:disabled {
+  opacity: 0.55;
+}
+
+.security,
+.error,
+.success {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.security {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.error {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.success {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.submit {
+  align-self: flex-start;
+  min-width: 132px;
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  background: #173f70;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.submit:hover:not(:disabled) {
+  background: #0f3159;
+}
+
+.submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .root {
+    padding: 24px 16px 32px;
+  }
+
+  .heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .submit {
+    width: 100%;
+  }
+}

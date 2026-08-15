@@ -18,7 +18,9 @@ remote_vector -> local_vector -> fts_trigram -> fts_unicode -> like_fallback
 
 ### 配置
 
-向量模型使用独立环境变量，不复用聊天 LLM 的 `ALTM_LLM_*`：
+DeepSeek Harness 插件的全局 Memory 面板提供 `Embedding 配置` 子页。用户填写 OpenAI-compatible Base URL、模型名和 API Key 后，ALTM 先调用真实 `/embeddings` 验证配置，成功后再原子写入 `<database>.embedding.json`。该文件权限为 `0600`，状态接口不返回 API Key，MCP 与 Worker 在每次操作时重新读取，因此无需重启。
+
+未使用 Harness UI 时，向量模型仍可通过独立环境变量配置，不复用聊天 LLM 的 `ALTM_LLM_*`：
 
 ```bash
 export ALTM_EMBEDDING_BASE_URL="https://example.com/compatible-mode/v1"
@@ -27,7 +29,7 @@ export ALTM_EMBEDDING_MODEL="text-embedding-v4"
 export ALTM_EMBEDDING_TIMEOUT_SECONDS="60"
 ```
 
-`.env.local` 已写入本地真实配置，并被 `.gitignore` 排除。
+托管配置完整时优先于环境变量。可通过 `ALTM_EMBEDDING_CONFIG_PATH` 指定托管文件位置。
 
 ### 缓存表
 
@@ -66,13 +68,13 @@ memory_unit_id + embedding_model -> content_hash, dimension, vector_json
 ## Design Trade-offs
 
 1. 当前不接向量数据库：避免在验证阶段引入额外服务，先用 SQLite JSON 缓存和内存 cosine 完成端到端闭环。
-2. 当前不自动边写边索引：避免每次 L0/L1/L2 写入都阻塞在远程模型请求上，先由显式 `index-embeddings` 管理成本和失败边界。
-3. MCP 只暴露显式索引工具：`memory_index_embeddings` 复用 CLI 的成本和失败边界，不在写入链路自动调用远程模型。
+2. 索引不阻塞 L0/L1/L2 写入：持久化 Worker 队列在 `extract_l2` 后异步执行 `index_embeddings`，显式 CLI/MCP 索引仍可用于补建和诊断。
+3. 配置保存与索引分离：保存只执行一个连通性向量请求，不在浏览器请求中同步回填历史记忆。
 4. 远程失败走本地回退：召回链路优先保持可用性，真正的连通性和索引错误由 `index-embeddings` 显式暴露。
 
 ## Failure Modes
 
-1. 环境变量不完整：`search` 和 MCP `memory_recall` 只使用本地召回；`index-embeddings` / `memory_index_embeddings` 会直接失败并提示缺失变量。
+1. 托管配置和环境变量均不完整：召回只使用本地路径；Worker 索引任务按持久化重试策略失败，显式索引直接报告缺失配置。
 2. 远程 embedding 请求失败：`search` 和 MCP `memory_recall` 回退到本地召回；`index-embeddings` / `memory_index_embeddings` 失败，不写入不完整缓存。
 3. 缓存为空：`remote_vector` 不产生候选，本地召回继续工作。
 4. 模型切换：缓存主键包含 `embedding_model`，不同模型的向量不会互相覆盖。
@@ -88,6 +90,7 @@ memory_unit_id + embedding_model -> content_hash, dimension, vector_json
 4. `remote_vector` 与本地召回融合。
 5. 远程 embedding 失败时的本地回退。
 6. MCP `memory_index_embeddings` 能显式刷新 embedding 缓存。
+7. 托管配置保存前真实验证、权限为 `0600`、状态响应不含密钥，并在不重启的情况下被后续索引读取。
 
 真实服务连通性验证使用用户提供的 OpenAI-compatible endpoint，模型为 `text-embedding-v4`，返回向量维度为 1024。
 

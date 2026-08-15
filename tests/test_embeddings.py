@@ -11,6 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from altm.application import AltmApplication  # noqa: E402
 from altm.contracts import (  # noqa: E402
     EmbeddingConfig,
     LifecycleState,
@@ -21,6 +22,7 @@ from altm.contracts import (  # noqa: E402
 )
 from altm.llm import (  # noqa: E402
     OpenAICompatibleEmbeddingClient,
+    embedding_config_path,
     optional_embedding_client_from_env,
 )
 from altm.retrieval import FTSRetrievalEngine  # noqa: E402
@@ -208,6 +210,66 @@ class EmbeddingIntegrationTest(unittest.TestCase):
     def test_optional_embedding_client_from_env_returns_none_without_full_config(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             self.assertIsNone(optional_embedding_client_from_env())
+
+    def test_managed_embedding_config_is_verified_private_and_write_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            server_url = "http://127.0.0.1:%s/v1" % server.server_port
+            thread.start()
+            try:
+                with patch.dict(os.environ, {}, clear=True):
+                    app = AltmApplication(db_path)
+                    self.assertFalse(app.embedding_status()["configured"])
+                    status = app.configure_embedding(
+                        base_url=server_url,
+                        model="managed-embedding",
+                        api_key="managed-secret",
+                    )
+                    rotated = app.configure_embedding(
+                        base_url=server_url,
+                        model="managed-embedding-v2",
+                    )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+            config_path = embedding_config_path(db_path)
+            self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(status["source"], "managed")
+            self.assertEqual(status["model"], "managed-embedding")
+            self.assertEqual(rotated["model"], "managed-embedding-v2")
+            self.assertNotIn("managed-secret", json.dumps(status))
+            self.assertNotIn("api_key", status)
+
+    def test_managed_embedding_config_takes_effect_without_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "memory.sqlite3"
+            store = SQLiteMemoryStore(db_path)
+            store.initialize()
+            store.put_memory_unit(_memory("managed", "semantic-target memory"))
+            app = AltmApplication(db_path)
+
+            server = HTTPServer(("127.0.0.1", 0), FakeEmbeddingHandler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with patch.dict(os.environ, {}, clear=True):
+                    app.configure_embedding(
+                        base_url="http://127.0.0.1:%s/v1" % server.server_port,
+                        model="managed-embedding",
+                        api_key="managed-secret",
+                    )
+                    indexed = app.index_embeddings(limit=10)
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+            self.assertEqual(indexed["embedding_model"], "managed-embedding")
+            self.assertEqual(indexed["memory_ids"], ["managed"])
 
 
 def _memory(memory_id: str, content: str) -> MemoryUnit:

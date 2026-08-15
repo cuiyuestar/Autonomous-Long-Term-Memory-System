@@ -1,8 +1,8 @@
-/** Browser plugin for the ALTM Memory conversation tab. */
+/** Browser plugin for the global ALTM Memory panel. */
 
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-client-locale/client";
-import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
+import type {} from "@deepseek-ai/dsh-client-ui-sidebar/client";
 import { MemoryUiClient, type MemoryUiPort } from "./api.ts";
 import { en, NS, zh } from "./locales.ts";
 import { MemoryView, type MemoryViewInjected } from "./MemoryView.tsx";
@@ -10,7 +10,7 @@ import { MemoryView, type MemoryViewInjected } from "./MemoryView.tsx";
 /** Required Client services for locale and slot composition. */
 export const inject = ["slots", "locale"];
 
-/** Register bilingual copy and the session-scoped Memory view. */
+/** Register bilingual copy and the capability-driven global Memory entry. */
 export function apply(ctx: Context): void {
   ctx.effect(
     () => ctx.locale.register(NS, { zh, en }),
@@ -26,6 +26,8 @@ export function apply(ctx: Context): void {
     prefetch: (sessionId, seedNodeIds) =>
       client.prefetch(sessionId, seedNodeIds),
     layers: sessionId => client.layers(sessionId),
+    embeddingStatus: () => client.embeddingStatus(),
+    configureEmbedding: input => client.configureEmbedding(input),
   };
   ctx.effect(() => {
     let closed = false;
@@ -39,11 +41,11 @@ export function apply(ctx: Context): void {
       if (closed) return;
       if (available && disposeView === undefined) {
         disposeView = ctx.slots.inject(
-          "conversation.view",
+          "sidebar.footer.action",
           () => ctx.slots.register({
-            name: "conversation.view",
+            name: "sidebar.footer.action",
             id: "altm-memory",
-            order: 5,
+            order: 20,
             locale: NS,
             label: () => t("view.memory"),
             inject: (): MemoryViewInjected => ({

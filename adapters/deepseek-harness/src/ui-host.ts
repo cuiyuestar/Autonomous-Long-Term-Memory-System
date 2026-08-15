@@ -1,5 +1,5 @@
 /**
- * Same-origin read-only Host bridge for the ALTM browser plugin.
+ * Same-origin Host bridge for the ALTM browser plugin.
  *
  * @module @altm/deepseek-harness/ui-host
  */
@@ -63,7 +63,7 @@ class HttpError extends Error {
 export const inject = ["webServer", "sessions"];
 
 /**
- * Register the read-only graph and layer query route.
+ * Register scoped memory reads and write-only embedding configuration.
  *
  * @param ctx - Host context carrying the Web server and live Sessions.
  * @param config - ALTM endpoint, credential reference, and fixed identity.
@@ -79,6 +79,34 @@ export function apply(ctx: Context, config: Config): void {
         const operation = requestUrl.pathname.slice(ALTM_UI_API_PATH.length);
         if ((req.method ?? "GET") === "GET" && operation === "/health") {
           json(res, 200, { available: true });
+          return;
+        }
+        if ((req.method ?? "GET") === "GET" && operation === "/embedding") {
+          const payload = await callTool(
+            ctx,
+            resolved,
+            "memory_ui_embedding_status",
+            {},
+          );
+          json(res, 200, payload);
+          return;
+        }
+        if ((req.method ?? "GET") === "POST" && operation === "/embedding") {
+          const body = await readJsonBody(req);
+          const baseUrl = requiredString(body, "baseUrl", 2048);
+          const model = requiredString(body, "model", 256);
+          const apiKey = optionalString(body, "apiKey", 4096);
+          const payload = await callTool(
+            ctx,
+            resolved,
+            "memory_ui_configure_embedding",
+            {
+              base_url: baseUrl,
+              model,
+              ...(apiKey === undefined ? {} : { api_key: apiKey }),
+            },
+          );
+          json(res, 200, payload);
           return;
         }
         const sessionId = requestUrl.searchParams.get("sessionId");
@@ -153,7 +181,7 @@ export function apply(ctx: Context, config: Config): void {
         json(res, 502, { error: "ALTM memory service is unavailable" });
       }
     },
-  }), "altm-memory-ui: read-only browser route");
+  }), "altm-memory-ui: browser route");
 }
 
 function resolveConfig(config: Config): ResolvedConfig {
@@ -257,6 +285,36 @@ function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function requiredString(
+  value: Record<string, unknown>,
+  field: string,
+  maxLength: number,
+): string {
+  const result = optionalString(value, field, maxLength);
+  if (result === undefined) throw new HttpError(400, `${field} is required`);
+  return result;
+}
+
+function optionalString(
+  value: Record<string, unknown>,
+  field: string,
+  maxLength: number,
+): string | undefined {
+  const candidate = value[field];
+  if (candidate === undefined) return undefined;
+  if (typeof candidate !== "string") {
+    throw new HttpError(400, `${field} must be a string`);
+  }
+  const result = candidate.trim();
+  if (!result || result.length > maxLength) {
+    throw new HttpError(
+      400,
+      `${field} must contain 1-${String(maxLength)} characters`,
+    );
+  }
+  return result;
 }
 
 function nonEmpty(value: string, field: string): string {

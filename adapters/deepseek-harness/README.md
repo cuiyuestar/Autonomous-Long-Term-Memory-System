@@ -12,8 +12,8 @@ The package exposes explicit Host roles plus one browser Client:
 | `@altm/deepseek-harness/memory` | Service Definition for `ctx.longTermMemory`. |
 | `@altm/deepseek-harness/provider` | ALTM MCP Service Provider. |
 | `@altm/deepseek-harness/consumer` | Harness lifecycle Consumer. |
-| `@altm/deepseek-harness/ui-host` | Same-origin read-only graph and L1-L4 browser bridge. |
-| `@altm/deepseek-harness/client` | Memory tab, spherical graph, layer browser, and bilingual controls. |
+| `@altm/deepseek-harness/ui-host` | Same-origin graph, L1-L4, and write-only embedding-configuration bridge. |
+| `@altm/deepseek-harness/client` | Global Memory panel, spherical graph, layer browser, embedding setup, and bilingual controls. |
 
 The shipped bundle keeps the top-level Client marker installed and places the Provider, Consumer, and UI Host inside one `cordis:group` with id `altm-memory`. Disabling that group hot-unloads all memory behavior. The browser Client polls the UI Host capability and removes or restores its slots without restarting Web. A different Provider can implement the Service Definition while reusing the same Harness Consumer.
 
@@ -21,15 +21,17 @@ ALTM does not replace the Harness SessionEvent log, persistence, replay, or comp
 
 ## Browser UI
 
-The installed Web profile gains a session-scoped `Memory` view beside Chat and Trajectory. It contains only:
+The installed Web profile gains a global `Memory` action at the bottom of the sidebar. It is available before any Session is opened and launches a full panel with three peer views:
 
 - a Three.js spherical local view of the scoped heterogeneous graph;
 - an L1-L4 abstraction ladder that renders one level at a time;
-- a Chinese/English switch backed by the Harness locale service.
+- an OpenAI-compatible embedding provider form with Base URL, model, and write-only API key fields.
 
-The graph loads one 120-node neighborhood, prefetches up to four frontier neighborhoods while idle, and keeps at most 24 neighborhoods in its Client cache. Selecting a node recenters the sphere and promotes its cached neighborhood. The desktop canvas excludes the detail inspector; narrow layouts move that inspector below the graph. The layer browser initially renders 20 of the newest 80 memories per level and reveals more on demand. Its mobile list and detail regions scroll independently inside the conversation view. L0 remains available only through evidence references.
+Graph and layer reads use the current Session, then the most recent Session when none is selected. They show a no-Session state when neither exists; embedding setup remains available. The graph loads one 120-node neighborhood, prefetches up to four frontier neighborhoods while idle, and keeps at most 24 neighborhoods in its Client cache. Selecting a node recenters the sphere and promotes its cached neighborhood. The desktop canvas excludes the detail inspector; narrow layouts move that inspector below the graph. The layer browser initially renders 20 of the newest 80 memories per level and reveals more on demand. L0 remains available only through evidence references.
 
-The browser never receives the MCP credential or SQLite path. It calls the same-origin `ui-host`, which derives tenant, user, Agent, and workspace scope from Host configuration plus the addressed live Harness Session before forwarding read-only calls to the authenticated runtime MCP.
+On the first unconfigured browser use, the Client opens a concise embedding setup dialog. Its action opens the embedding view directly. A browser-local acknowledgement prevents repeated first-use dialogs; the permanent Memory action remains available for later changes.
+
+The browser never receives the MCP credential, SQLite path, or a stored embedding API key. It calls the same-origin `ui-host`, which derives tenant, user, Agent, and workspace scope from Host configuration plus the addressed live Harness Session before forwarding memory reads to the authenticated runtime MCP. Embedding saves travel write-only through the same route. ALTM validates the provider with a real `/embeddings` request before atomically writing `<database>.embedding.json` with mode `0600`; MCP and Worker operations read the managed configuration on every operation, so a successful save applies without a restart. Complete managed settings take precedence over `ALTM_EMBEDDING_*` environment variables.
 
 Each recalled `user/message` carries structured activity metadata in its durable source. Harness renders it as one default-collapsed recall row with included-memory, L1-L4, graph-match, and token figures; no new unknown SessionEvent type is introduced.
 

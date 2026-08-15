@@ -2,6 +2,8 @@
 
 import {
   ALTM_UI_API_PATH,
+  type UiEmbeddingConfigInput,
+  type UiEmbeddingStatus,
   type UiGraphNeighborhood,
   type UiGraphNode,
   type UiMemoryLayers,
@@ -16,6 +18,8 @@ export interface MemoryUiPort {
   neighborhood(sessionId: string, seedNodeId: string): Promise<UiGraphNeighborhood>;
   prefetch(sessionId: string, seedNodeIds: readonly string[]): void;
   layers(sessionId: string): Promise<UiMemoryLayers>;
+  embeddingStatus(): Promise<UiEmbeddingStatus>;
+  configureEmbedding(input: UiEmbeddingConfigInput): Promise<UiEmbeddingStatus>;
 }
 
 /** Browser-side read client. No MCP credential crosses this interface. */
@@ -83,6 +87,20 @@ export class MemoryUiClient implements MemoryUiPort {
     return request<UiMemoryLayers>(
       `${ALTM_UI_API_PATH}/layers?${params.toString()}`,
     );
+  }
+
+  embeddingStatus(): Promise<UiEmbeddingStatus> {
+    return request<UiEmbeddingStatus>(`${ALTM_UI_API_PATH}/embedding`);
+  }
+
+  configureEmbedding(
+    input: UiEmbeddingConfigInput,
+  ): Promise<UiEmbeddingStatus> {
+    return request<UiEmbeddingStatus>(`${ALTM_UI_API_PATH}/embedding`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
   }
 }
 

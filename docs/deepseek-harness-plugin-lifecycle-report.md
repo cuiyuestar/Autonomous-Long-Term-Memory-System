@@ -1,6 +1,6 @@
 # DeepSeek Harness 可插拔长期记忆改造报告
 
-验证日期：2026-08-14
+验证日期：2026-08-15
 
 ## 结论
 
@@ -13,7 +13,7 @@ ALTM MCP Provider
              |
 DeepSeek Harness Consumer
              |
-Read-only UI Host + Web Client
+UI Host + Web Client
 ```
 
 默认 bundle 使用 `cordis:group` 组合 Provider、Consumer 与 UI Host。顶层包根只负责让 Harness 扫描 `dsh.client`；Client 根据 UI Host 健康状态动态注册或注销 Memory slots。用户可以整体安装、热启用、热停用和卸载，也可以保留 Consumer 并替换其他长期记忆 Provider。
@@ -28,8 +28,8 @@ Read-only UI Host + Web Client
 | `@altm/deepseek-harness/memory` | `ctx.longTermMemory` Service Definition |
 | `@altm/deepseek-harness/provider` | ALTM Streamable HTTP MCP Provider |
 | `@altm/deepseek-harness/consumer` | Harness `agent/pre-step` / `turn/end` Consumer |
-| `@altm/deepseek-harness/ui-host` | 只读 Graph 与 L1-L4 浏览器桥接 |
-| `@altm/deepseek-harness/client` | Memory 标签、球状异构图、分层记忆和双语 UI |
+| `@altm/deepseek-harness/ui-host` | Graph、L1-L4 与 write-only Embedding 配置桥接 |
+| `@altm/deepseek-harness/client` | 全局 Memory 面板、球状异构图、分层记忆、Embedding 配置和双语 UI |
 
 默认 bundle：
 
@@ -50,14 +50,17 @@ Read-only UI Host + Web Client
 
 ## Web Client
 
-Memory 页面只保留两个模式：
+Memory 不再注册到 Chat/Trajectory 同级的会话标签。插件改为向 `sidebar.footer.action` 注册全局入口，无需先进入或触发 Session 即可打开。面板包含三个同级模式：
 
 - `Graph`：Three.js 球面局部图，每次最多加载 120 个节点；空闲时预取边界邻域，Client LRU 最多保存 24 个邻域。
 - `Layers`：L4 Persona、L3 Scene、L2 Atom、L1 Session 单层切换；每层先显示 20 条，按需继续加载，L0 仅在证据引用中出现。
+- `Embedding 配置`：填写 OpenAI-compatible Base URL、模型名和 write-only API Key；保存前执行真实向量请求验证，成功后无需重启即可供 MCP 与 Worker 使用。
+
+Graph 与 Layers 优先读取当前 Session scope，没有当前 Session 时使用最近 Session；没有任何 Session 时显示空态。Embedding 配置始终可用。首次未配置的浏览器会显示简短引导，`点击配置` 直接打开 Embedding 子页。
 
 每轮召回的持久 `user/message.source` 记录 included count、L1-L4 分布、Graph 命中、token 估算和 memory ids。Harness 原生 Context disclosure 将它呈现为默认折叠的一行，不引入外部未知 SessionEvent 类型。
 
-UI 使用 Harness 主题 token 和图标，随全局 Locale 在中文与英文之间切换。浏览器只调用同源 UI Host，不获得 MCP Key 或 SQLite 路径。
+UI 使用 Harness 主题 token 和图标，随全局 Locale 在中文与英文之间切换。浏览器只调用同源 UI Host，不获得 MCP Key、SQLite 路径或已保存的 Embedding API Key。托管配置原子写入 `<database>.embedding.json` 并保持 `0600` 权限。
 
 ## 浏览器验收
 
@@ -65,13 +68,16 @@ UI 使用 Harness 主题 token 和图标，随全局 Locale 在中文与英文�
 
 | 视口与场景 | 结果 |
 |---|---|
-| Desktop 1280×800 Graph | Canvas 928×556，右侧详情 288×556，重叠宽度 0 |
+| Desktop 1280×800 Graph | Canvas 832×659、缓冲区同尺寸、导出数据非空；6 个节点、7 条关系 |
+| Desktop Embedding | 对话框 1122×754；保存按钮 132×40 完整可见；无横向溢出 |
+| 首次引导 | 清空站点存储后自动弹出；`点击配置` 直接选中 Embedding 子页 |
 | Desktop Layers | 150px 层级栏、480px 列表、586px 详情；首次 20 条并显示加载更多 |
-| Mobile 390×844 Graph | 可用宽度 326px，详情位于底部 216px；Canvas 中心像素非透明 |
-| Mobile Layers | 根区 326×600；层级栏 48px、列表 221px、详情 331px，列表和详情独立滚动 |
+| Mobile 390×844 Embedding | 面板 390×844 全屏；保存按钮 358×40 完整可见；页面和面板均无横向溢出 |
+| Mobile 390×844 Graph | Canvas 与缓冲区均为 390×755，导出数据非空；详情位于图谱下方 |
+| Mobile 390×844 Layers | 面板 390×844，层级栏 390×48；列表和详情纵向排列且无横向溢出 |
 | 数据密度 | L2 首次 20 条，加载更多后 40 条；页面无横向溢出 |
 | Locale | `中 | EN` 同步切换 Harness 与 Memory，刷新后保持选择 |
-| Console | 新桌面和移动上下文均无 error 或 warning |
+| 配置状态 API | HTTP 200；仅返回 `base_url/configured/model/source`，不含 API Key |
 
 ## Runtime Cycle
 
@@ -119,7 +125,7 @@ Consumer 在以下情况 abort：
 
 | 验证 | 结果 |
 |---|---|
-| ALTM 全量测试 | 160 项通过 |
+| ALTM 全量测试 | 165 项通过 |
 | Python prepare/commit/abort 状态机 | 通过 |
 | 旧 SQLite runtime cycle CHECK 迁移 | 通过 |
 | runtime MCP 暴露 `memory_abort_turn` | 通过 |
@@ -131,7 +137,9 @@ Consumer 在以下情况 abort：
 | 隔离 Harness Loader + MCP E2E | 通过 |
 | recall、citation、scope、缺凭证降级 | 通过 |
 | Client boot manifest 与 UI Host | `client.js` 已加载，health HTTP 200 |
-| Graph/Layers 桌面与移动布局 | 通过 |
+| Graph/Layers/Embedding 桌面与移动布局 | 通过 |
+| 首次引导与直接配置跳转 | 通过 |
+| 托管配置真实验证、`0600`、动态生效与密钥不回传 | 通过 |
 | L2 首次 20 条与加载更多 | 通过，20 -> 40 |
 | 中英文切换与刷新保持 | 通过 |
 | 真实 profile `disable -> enable` | Memory 自动消失/恢复，Web PID 不变 |
@@ -151,7 +159,7 @@ web=running
 web_url=http://127.0.0.1:3000
 ```
 
-最终热开关复核中，Web PID 在 `disable -> enable` 前后保持不变，浏览器无需刷新即可注销和恢复 Memory 标签。实际 Loader 展开的配置包含 `altm-memory-client`、`altm-memory` group、Provider、`./consumer` 与 `./ui-host`。
+最终热开关复核中，Web PID 在 `disable -> enable` 前后保持不变，浏览器无需刷新即可注销和恢复全局 Memory 入口。实际 Loader 展开的配置包含 `altm-memory-client`、`altm-memory` group、Provider、`./consumer` 与 `./ui-host`。
 
 正式 SQLite 已迁移为允许 `prepared|committed|aborted|failed`，已有 committed 数据保持不变。最终状态为 `committed=18`、`aborted=3`、`prepared=0`，并记录 `injected=97`、`cited_by_agent=2`；3 个旧 adapter 遗留 cycle 已以 `legacy-unsettled-cycle` 终止并保留用户 L0。
 

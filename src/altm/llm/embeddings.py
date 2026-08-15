@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from collections.abc import Sequence
-from typing import Any
+from contextlib import suppress
+from pathlib import Path
+from typing import Any, cast
 from urllib import error, request
+from urllib.parse import urlparse
 
 from altm.contracts import EmbeddingConfig
+
+_CONFIG_PATH_ENV = "ALTM_EMBEDDING_CONFIG_PATH"
+_GROUP_OTHER_BITS = 0o077
 
 
 class OpenAICompatibleEmbeddingClient:
@@ -76,3 +83,170 @@ def optional_embedding_client_from_env() -> OpenAICompatibleEmbeddingClient | No
     if not all(os.environ.get(name) for name in names):
         return None
     return OpenAICompatibleEmbeddingClient(embedding_config_from_env())
+
+
+def embedding_config_path(db_path: str | Path) -> Path:
+    """Return the private managed configuration path for one ALTM database."""
+    configured = os.environ.get(_CONFIG_PATH_ENV, "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    return Path("%s.embedding.json" % Path(db_path))
+
+
+def embedding_config_from_sources(db_path: str | Path) -> EmbeddingConfig:
+    """Resolve managed settings before the process environment."""
+    managed = _managed_embedding_config(db_path)
+    return managed if managed is not None else embedding_config_from_env()
+
+
+def optional_embedding_client_from_sources(
+    db_path: str | Path,
+) -> OpenAICompatibleEmbeddingClient | None:
+    """Resolve a managed or environment-backed client when fully configured."""
+    managed = _managed_embedding_config(db_path)
+    if managed is not None:
+        return OpenAICompatibleEmbeddingClient(managed)
+    return optional_embedding_client_from_env()
+
+
+def embedding_config_status(db_path: str | Path) -> dict[str, object]:
+    """Return non-secret provider state for configuration surfaces."""
+    managed = _managed_embedding_config(db_path)
+    if managed is not None:
+        return _status(managed, "managed")
+    try:
+        configured = embedding_config_from_env()
+    except RuntimeError:
+        return {
+            "configured": False,
+            "source": None,
+            "base_url": "",
+            "model": "",
+        }
+    return _status(configured, "environment")
+
+
+def embedding_config_candidate(
+    db_path: str | Path,
+    *,
+    base_url: str,
+    model: str,
+    api_key: str | None,
+) -> EmbeddingConfig:
+    """Build a validated replacement while retaining an existing write-only key."""
+    normalized_base_url = base_url.strip().rstrip("/")
+    parsed = urlparse(normalized_base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Embedding base URL must be an absolute HTTP or HTTPS URL")
+    normalized_model = model.strip()
+    if not normalized_model:
+        raise ValueError("Embedding model is required")
+    current: EmbeddingConfig | None
+    try:
+        current = embedding_config_from_sources(db_path)
+    except RuntimeError:
+        current = None
+    normalized_api_key = api_key.strip() if api_key is not None else ""
+    if not normalized_api_key and current is not None:
+        normalized_api_key = current.api_key
+    if not normalized_api_key:
+        raise ValueError("Embedding API key is required")
+    if "\r" in normalized_api_key or "\n" in normalized_api_key:
+        raise ValueError("Embedding API key cannot contain line breaks")
+    timeout_seconds = current.timeout_seconds if current is not None else int(
+        os.environ.get("ALTM_EMBEDDING_TIMEOUT_SECONDS", "60")
+    )
+    return EmbeddingConfig(
+        base_url=normalized_base_url,
+        api_key=normalized_api_key,
+        model=normalized_model,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def save_embedding_config(
+    db_path: str | Path,
+    config: EmbeddingConfig,
+) -> None:
+    """Atomically persist one validated configuration with owner-only permissions."""
+    path = embedding_config_path(db_path)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    payload = json.dumps(
+        {
+            "base_url": config.base_url,
+            "api_key": config.api_key,
+            "model": config.model,
+            "timeout_seconds": config.timeout_seconds,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+    descriptor, temporary = tempfile.mkstemp(
+        dir=path.parent,
+        prefix="%s." % path.name,
+        suffix=".tmp",
+        text=True,
+    )
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        path.chmod(0o600)
+    except BaseException:
+        with suppress(OSError):
+            os.close(descriptor)
+        with suppress(FileNotFoundError):
+            Path(temporary).unlink()
+        raise
+
+
+def _managed_embedding_config(db_path: str | Path) -> EmbeddingConfig | None:
+    path = embedding_config_path(db_path)
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return None
+    if os.name != "nt" and stat.st_mode & _GROUP_OTHER_BITS:
+        raise PermissionError(
+            "Embedding configuration is readable beyond its owner: %s" % path
+        )
+    try:
+        value: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Invalid managed embedding configuration: %s" % path) from exc
+    if not isinstance(value, dict):
+        raise RuntimeError("Managed embedding configuration must be a JSON object")
+    payload = cast(dict[str, object], value)
+    try:
+        base_url = payload["base_url"]
+        api_key = payload["api_key"]
+        model = payload["model"]
+        timeout_seconds = payload.get("timeout_seconds", 60)
+    except KeyError as exc:
+        raise RuntimeError("Managed embedding configuration is incomplete") from exc
+    if (
+        not isinstance(base_url, str)
+        or not isinstance(api_key, str)
+        or not isinstance(model, str)
+        or not isinstance(timeout_seconds, int)
+    ):
+        raise RuntimeError("Managed embedding configuration has invalid field types")
+    return EmbeddingConfig(
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def _status(config: EmbeddingConfig, source: str) -> dict[str, object]:
+    return {
+        "configured": True,
+        "source": source,
+        "base_url": config.base_url,
+        "model": config.model,
+    }
