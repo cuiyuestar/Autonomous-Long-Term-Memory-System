@@ -98,6 +98,8 @@ memory_unit_id + embedding_model -> content_hash, dimension, vector_json
 
 真实服务连通性验证使用用户提供的 OpenAI-compatible endpoint，模型为 `text-embedding-v4`，返回向量维度为 1024。
 
+2026-08-16 的受控公开评测保持数据、题目、Top-K 和指标定义不变，只在 L0 基线上增加远程 Embedding。LongMemEval 前 100 题的 Recall-any@10 从 80.00% 提升到 100.00%，MRR 从 58.48% 提升到 85.82%；LoCoMo 全集的 Recall-any@10 从 37.13% 提升到 66.40%，MRR 从 20.68% 提升到 39.53%。对应 p95 召回延迟分别从 468.39 ms 增至 1,032.84 ms、从 78.95 ms 增至 1,248.58 ms。完整结果见[向量评测报告](../reports/embedding-eval-20260816/README.md)。
+
 当前验证结果：
 
 ```text
@@ -115,4 +117,4 @@ CLI_SEARCH_COUNT 1
 CLI_MATCHED_BY [['remote_vector', 'local_vector']]
 ```
 
-补充说明：`ruff` 与 `pyright` 是 `dev` optional dependency，当前 `.venv` 未安装，因此本次未执行静态 lint/type check。
+补充验证：全量 169 个 Python 测试通过；Ruff 与 strict Pyright 均通过。生产记忆库 49/49 条记忆已建立远程向量并在实际召回中出现 `remote_vector` 通道。公开评测的唯一记忆向量覆盖率为 LongMemEval 49,776/49,776、LoCoMo 5,882/5,882。

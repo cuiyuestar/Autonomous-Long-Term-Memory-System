@@ -6,11 +6,14 @@ This report establishes the first reproducible L0 evidence-retrieval baseline.
 It does not include answer generation, remote embeddings, or embedding-dependent
 L3/L4 progression.
 
+The controlled remote-vector comparison is available in the
+[embedding evaluation](../embedding-eval-20260816/README.md).
+
 ## Quality Gates
 
 | Gate | Result |
 |---|---:|
-| Domain tests | 162 / 162 |
+| Domain tests | 169 / 169 |
 | Harness lifecycle tests | 3 / 3 |
 | Runtime health checks | 8 / 8 |
 | Cross-repository integration scenarios | 6 / 6 |

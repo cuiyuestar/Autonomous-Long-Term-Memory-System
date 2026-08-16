@@ -185,6 +185,6 @@ set +a
 
 ## 当前边界
 
-DeepSeek 当前 Key 没有提供 Embedding API，因此 remote embedding indexing 已按重试策略失败。Graph 抽取和 Graph-based query emergence 不依赖该 remote embedding，已经真实通过。
+本报告执行时，DeepSeek Key 没有提供 Embedding API，因此当时的 remote embedding indexing 按重试策略失败。Graph 抽取和 Graph-based query emergence 不依赖 remote embedding，报告中的真实通过结论保持不变。
 
-L3/L4 semantic scene/persona 形成依赖 embedding index，因此本报告不宣称 L3/L4 已通过。要验证完整的 L3/L4 长期晋升链，还需配置一个 OpenAI-compatible Embedding Provider，再执行跨 session 重复证据、观察周期、激活和 supersede 测试。
+后续已配置独立 OpenAI-compatible Embedding Provider，并完成生产记忆索引以及 LongMemEval、LoCoMo 的 L0 + Embedding 受控评测。该新增证据证明远程语义召回链路有效；本报告仍不宣称 L3/L4 形成质量已通过，因为完整长期晋升链还需执行带 gold scene/persona 标签的跨 session 重复证据、观察周期、激活和 supersede 测试。

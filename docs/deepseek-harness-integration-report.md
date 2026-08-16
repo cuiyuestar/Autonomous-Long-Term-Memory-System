@@ -1,6 +1,6 @@
 # DeepSeek Harness 接入测试报告
 
-测试日期：2026-08-14
+测试日期：2026-08-14；Embedding 补充验证：2026-08-16
 
 > 后续可插拔改造已将 adapter 拆分为 Service Definition、ALTM Provider 和 Harness Consumer，并增加 `abort_turn`、热启停和完整卸载。当前结果见[插件生命周期改造报告](deepseek-harness-plugin-lifecycle-report.md)。
 
@@ -10,7 +10,7 @@ ALTM 已作为独立树外 Cordis bundle 接入 DeepSeek Harness。适配器没�
 
 真实跨仓组装测试通过：bundle 能安装到隔离 profile，Harness Loader 能加载发布产物，首轮与后续轮次都调用真实 ALTM Streamable HTTP MCP 服务，召回上下文以持久 `user/message` 进入 Harness session log，最终回复在 `turn/end` 后提交，真实 marker 引用写回 `cited_by_agent`，四级 scope 阻断跨用户读取，缺失客户端凭证时 Harness 轮次保持可用。
 
-ALTM 全量 160 个测试通过。它们覆盖 L0-L4、后台 worker、混合召回、图检索与查询诱导涌现、CCR、生命周期、自治治理、scope 隔离、MCP、评估、回滚、runtime cycle abort 和只读 UI 查询。全量测试的外部模型边界使用仓库已有的本地真实 HTTP server fixture；另有针对性验证使用真实 DeepSeek Chat 完成 Harness 两轮召回与 Graph 涌现，结果见[自主记忆涌现真实验证报告](altm-autonomous-emergence-verification-report.md)。DeepSeek Key 不提供 Embedding API，因此不声明 L3/L4 真实模型晋升、线上延迟或费用结论。
+ALTM 全量 169 个测试通过。它们覆盖 L0-L4、后台 worker、混合召回、图检索与查询诱导涌现、CCR、生命周期、自治治理、scope 隔离、MCP、评估、回滚、runtime cycle abort 和只读 UI 查询。全量测试的外部模型边界使用仓库已有的本地真实 HTTP server fixture；另有针对性验证使用真实 DeepSeek Chat 完成 Harness 两轮召回与 Graph 涌现，结果见[自主记忆涌现真实验证报告](altm-autonomous-emergence-verification-report.md)。后续已接入独立 OpenAI-compatible Embedding Provider，生产记忆索引和公开数据集向量消融均通过；这证明远程语义召回链路，不等同于 L3/L4 形成质量已完成真实标注评测。
 
 ## 测试版本
 
@@ -116,7 +116,7 @@ API Key 通过 `apiKeyEnv` 引用解析。存在 `ctx.credentials` 时由该服�
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-结果：`Ran 160 tests`，`OK`。
+结果：`Ran 169 tests`，`OK`。
 
 | 能力 | 代表性测试证据 |
 |---|---|
@@ -178,6 +178,6 @@ npm run build
 
 ## 验证边界
 
-- 全量测试使用真实本地 HTTP server 验证外部请求、解析、失败和持久化。针对性验证另行使用真实 DeepSeek Chat 完成 Harness 两轮召回与 Graph 涌现；没有可用的 Embedding API，因此不代表 L3/L4 的真实模型晋升、线上延迟或费用。
+- 全量测试使用真实本地 HTTP server 验证外部请求、解析、失败和持久化。针对性验证另行使用真实 DeepSeek Chat 完成 Harness 两轮召回与 Graph 涌现，并使用真实 `text-embedding-v4` 完成生产记忆索引与 LongMemEval、LoCoMo 向量消融。该结果仍不代表 L3/L4 形成质量、线上费用或最终答案准确率。
 - 没有运行 DeepSeek Harness 全仓测试，因为 Harness 源码零改动；发布产物通过真实 profile、Loader、agent loop 和 persistence 组装测试。
 - 直接 L0 查询召回按 ALTM `session_id` 过滤。跨 session 记忆依赖 worker 形成的 L2/L3/L4 和 active window；该行为由 ALTM 专门的跨 session、L3/L4 和自治治理测试覆盖，适配器 E2E 不把短期 L0 误当成长记忆。

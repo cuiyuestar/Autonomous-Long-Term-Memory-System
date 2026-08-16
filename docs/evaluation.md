@@ -54,6 +54,9 @@ Reports contain Recall-any@K, Recall-all@K, nDCG@K, MRR, p50/p95/p99 latency,
 per-category aggregates, dataset SHA-256, Python/platform information, and
 per-question evidence IDs.
 
+The first controlled `l0` versus `embedding` results are published in the
+[embedding evaluation report](../reports/embedding-eval-20260816/README.md).
+
 ## Anonymous Traces
 
 Raw JSONL records use `kind=message` or `kind=query`:

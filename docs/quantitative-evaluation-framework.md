@@ -65,6 +65,10 @@ ALTM 不应只用一个问答正确率证明能力。它的差异化来自五个
 9. 报告没有完整固定 answer model、judge、prompt hash、embedding、随机种子和每个阶段的配置。
 10. 没有同模型、同 embedding、同预算的一次只改一个变量的受控基线。
 
+### 2.4 已完成的首项受控消融
+
+2026-08-16 已完成 `L0` 与 `L0 + text-embedding-v4` 的 paired comparison，固定数据、问题、Top-K 和指标定义。LongMemEval 前 100 题的 Recall-any@10 提升 20.00 个百分点，LoCoMo 全集提升 29.26 个百分点；对应 p95 延迟分别变为基线的 2.21 倍和 15.82 倍。结果证明远程语义向量显著提升证据召回，同时暴露在线 query embedding 的延迟成本。完整数据见[向量评测报告](../reports/embedding-eval-20260816/README.md)。
+
 ## 3. 公开 Benchmark 选择
 
 ### 3.1 第一优先级

@@ -1,0 +1,27 @@
+<h2>6.2 Embedding 受控消融</h2>
+
+<p>Embedding 组只在同一 L0 原始记忆上增加远程语义向量，不包含 L1-L4、Graph、Active Window 或 CCR。模型为 text-embedding-v4，向量维度为 1,024；LongMemEval 唯一记忆向量覆盖为 49,776 / 49,776，LoCoMo 为 5,882 / 5,882。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">数据集</th>
+      <th background-color="light-gray">方案</th>
+      <th background-color="light-gray">Recall-any@10</th>
+      <th background-color="light-gray">Recall-all@10</th>
+      <th background-color="light-gray">nDCG@10</th>
+      <th background-color="light-gray">MRR</th>
+      <th background-color="light-gray">p95</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>LongMemEval 100 题</td><td>L0</td><td>80.00%</td><td>62.00%</td><td>58.21%</td><td>58.48%</td><td>468.39 ms</td></tr>
+    <tr><td>LongMemEval 100 题</td><td>L0 + Embedding</td><td>100.00%</td><td>82.00%</td><td>84.54%</td><td>85.82%</td><td>1,032.84 ms</td></tr>
+    <tr><td>LoCoMo 全集</td><td>L0</td><td>37.13%</td><td>31.69%</td><td>23.01%</td><td>20.68%</td><td>78.95 ms</td></tr>
+    <tr><td>LoCoMo 全集</td><td>L0 + Embedding</td><td>66.40%</td><td>55.05%</td><td>42.96%</td><td>39.53%</td><td>1,248.58 ms</td></tr>
+  </tbody>
+</table>
+
+<p><b>效果。</b>LongMemEval Recall-any@10 提升 20.00 个百分点，LoCoMo 提升 29.26 个百分点；两套数据的全部召回和排序指标均提升。</p>
+
+<p><b>代价。</b>LongMemEval p95 延迟为基线的 2.21 倍，LoCoMo 为 15.82 倍。当前每个 query 都访问远程 Embedding Provider，后续应评估查询向量缓存、本地模型服务和延迟感知路由。</p>

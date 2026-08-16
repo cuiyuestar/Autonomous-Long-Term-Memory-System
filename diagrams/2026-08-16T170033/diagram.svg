@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="titleAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5178C6"/>
+      <stop offset="1" stop-color="#8569CB"/>
+    </linearGradient>
+    <linearGradient id="longmemBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5178C6"/>
+      <stop offset="1" stop-color="#8569CB"/>
+    </linearGradient>
+    <linearGradient id="locomoBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8569CB"/>
+      <stop offset="1" stop-color="#509863"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-30%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1F2329" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="900" fill="#FFFFFF"/>
+  <path d="M0 0 H1600 V12 H0 Z" fill="url(#titleAccent)"/>
+  <rect x="60" y="54" width="8" height="64" rx="4" fill="url(#titleAccent)"/>
+  <text x="92" y="83" font-family="Noto Sans SC, sans-serif" font-size="34" font-weight="700" fill="#1F2329">Embedding 检索增益与延迟代价</text>
+  <text x="92" y="113" font-family="Noto Sans SC, sans-serif" font-size="15" fill="#646A73">受控消融：检索质量显著提升，同时 p95 延迟上升</text>
+
+  <circle cx="1284" cy="79" r="7" fill="#AEB4BE"/>
+  <text x="1300" y="84" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#646A73">L0</text>
+  <circle cx="1362" cy="79" r="8" fill="#5178C6"/>
+  <text x="1379" y="84" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="600" fill="#1F2329">L0 + Embedding</text>
+
+  <rect x="60" y="134" width="1480" height="44" rx="22" fill="#F8F9FA" stroke="#DEE0E3" stroke-width="1"/>
+  <circle cx="84" cy="156" r="5" fill="#5178C6"/>
+  <text x="99" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#1F2329">模型</text>
+  <text x="142" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#5178C6">text-embedding-v4</text>
+  <line x1="342" y1="145" x2="342" y2="167" stroke="#DEE0E3" stroke-width="1"/>
+  <circle cx="369" cy="156" r="5" fill="#8569CB"/>
+  <text x="384" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#1F2329">向量维度</text>
+  <text x="456" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#8569CB">1024 维</text>
+  <line x1="548" y1="145" x2="548" y2="167" stroke="#DEE0E3" stroke-width="1"/>
+  <circle cx="575" cy="156" r="5" fill="#509863"/>
+  <text x="590" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#1F2329">向量覆盖</text>
+  <text x="668" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="600" fill="#1F2329">LongMemEval 49,776 / 49,776</text>
+  <circle cx="966" cy="156" r="3" fill="#BBBFC4"/>
+  <text x="984" y="161" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="600" fill="#1F2329">LoCoMo 5,882 / 5,882</text>
+  <rect x="1278" y="145" width="236" height="22" rx="11" fill="#DFF5E5"/>
+  <text x="1396" y="161" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#2F6F42">两组数据均为全量覆盖</text>
+
+  <text x="60" y="219" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#1F2329">检索质量增益</text>
+  <text x="1035" y="219" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">越高越好 · 百分比</text>
+  <line x1="60" y1="234" x2="1038" y2="234" stroke="#DEE0E3" stroke-width="2"/>
+
+  <path d="M66 258 V427" stroke="#5178C6" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="66" cy="258" r="10" fill="#F0F4FC" stroke="#5178C6" stroke-width="3"/>
+  <text x="92" y="292" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#1F2329">LongMemEval</text>
+  <text x="92" y="319" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">L0 → L0 + Embedding</text>
+  <text x="92" y="371" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">质量增益</text>
+  <text x="92" y="404" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700" fill="#5178C6">+20.00</text>
+  <text x="181" y="404" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#5178C6">pp 起</text>
+
+  <text x="275" y="271" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#1F2329">Recall-any@10</text>
+  <line x1="450" y1="292" x2="850" y2="292" stroke="#E7EAF0" stroke-width="10" stroke-linecap="round"/>
+  <text x="433" y="297" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">L0</text>
+  <rect x="450" y="287" width="320" height="10" rx="5" fill="#AEB4BE"/>
+  <text x="781" y="298" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">80.00%</text>
+  <line x1="450" y1="321" x2="850" y2="321" stroke="#E7EAF0" stroke-width="16" stroke-linecap="round"/>
+  <text x="433" y="326" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#5178C6">Embedding</text>
+  <rect x="450" y="313" width="400" height="16" rx="8" fill="url(#longmemBar)"/>
+  <circle cx="850" cy="321" r="10" fill="#5178C6" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="869" y="326" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#5178C6">100.00%</text>
+  <rect x="952" y="285" width="84" height="40" rx="20" fill="#F0F4FC" stroke="#5178C6" stroke-width="2"/>
+  <text x="994" y="310" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#5178C6">+20.00pp</text>
+
+  <text x="275" y="364" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#1F2329">MRR</text>
+  <line x1="450" y1="385" x2="850" y2="385" stroke="#E7EAF0" stroke-width="10" stroke-linecap="round"/>
+  <text x="433" y="390" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">L0</text>
+  <rect x="450" y="380" width="234" height="10" rx="5" fill="#AEB4BE"/>
+  <text x="695" y="391" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">58.48%</text>
+  <line x1="450" y1="414" x2="850" y2="414" stroke="#E7EAF0" stroke-width="16" stroke-linecap="round"/>
+  <text x="433" y="419" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#5178C6">Embedding</text>
+  <rect x="450" y="406" width="343" height="16" rx="8" fill="url(#longmemBar)"/>
+  <circle cx="793" cy="414" r="10" fill="#5178C6" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="812" y="419" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#5178C6">85.82%</text>
+  <rect x="952" y="378" width="84" height="40" rx="20" fill="#F0F4FC" stroke="#5178C6" stroke-width="2"/>
+  <text x="994" y="403" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#5178C6">+27.34pp</text>
+
+  <line x1="60" y1="454" x2="1038" y2="454" stroke="#DEE0E3" stroke-width="1"/>
+
+  <path d="M66 482 V658" stroke="#8569CB" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="66" cy="482" r="10" fill="#EAE2FE" stroke="#8569CB" stroke-width="3"/>
+  <text x="92" y="522" font-family="Noto Sans SC, sans-serif" font-size="19" font-weight="700" fill="#1F2329">LoCoMo</text>
+  <text x="92" y="549" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">L0 → L0 + Embedding</text>
+  <text x="92" y="601" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">最大增益</text>
+  <text x="92" y="634" font-family="Noto Sans SC, sans-serif" font-size="25" font-weight="700" fill="#8569CB">+29.26</text>
+  <text x="181" y="634" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#8569CB">pp</text>
+
+  <text x="275" y="501" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#1F2329">Recall-any@10</text>
+  <line x1="450" y1="522" x2="850" y2="522" stroke="#E7EAF0" stroke-width="10" stroke-linecap="round"/>
+  <text x="433" y="527" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">L0</text>
+  <rect x="450" y="517" width="149" height="10" rx="5" fill="#AEB4BE"/>
+  <text x="610" y="528" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">37.13%</text>
+  <line x1="450" y1="551" x2="850" y2="551" stroke="#E7EAF0" stroke-width="16" stroke-linecap="round"/>
+  <text x="433" y="556" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#8569CB">Embedding</text>
+  <rect x="450" y="543" width="266" height="16" rx="8" fill="url(#locomoBar)"/>
+  <circle cx="716" cy="551" r="10" fill="#8569CB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="735" y="556" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#8569CB">66.40%</text>
+  <rect x="952" y="515" width="84" height="40" rx="20" fill="#EAE2FE" stroke="#8569CB" stroke-width="2"/>
+  <text x="994" y="540" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#8569CB">+29.26pp</text>
+
+  <text x="275" y="594" font-family="Noto Sans SC, sans-serif" font-size="15" font-weight="700" fill="#1F2329">MRR</text>
+  <line x1="450" y1="615" x2="850" y2="615" stroke="#E7EAF0" stroke-width="10" stroke-linecap="round"/>
+  <text x="433" y="620" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">L0</text>
+  <rect x="450" y="610" width="83" height="10" rx="5" fill="#AEB4BE"/>
+  <text x="544" y="621" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">20.68%</text>
+  <line x1="450" y1="644" x2="850" y2="644" stroke="#E7EAF0" stroke-width="16" stroke-linecap="round"/>
+  <text x="433" y="649" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#8569CB">Embedding</text>
+  <rect x="450" y="636" width="158" height="16" rx="8" fill="url(#locomoBar)"/>
+  <circle cx="608" cy="644" r="10" fill="#8569CB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="627" y="649" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#8569CB">39.53%</text>
+  <rect x="952" y="608" width="84" height="40" rx="20" fill="#EAE2FE" stroke="#8569CB" stroke-width="2"/>
+  <text x="994" y="633" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#8569CB">+18.85pp</text>
+
+  <line x1="1070" y1="196" x2="1070" y2="728" stroke="#DEE0E3" stroke-width="2"/>
+  <text x="1110" y="219" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#1F2329">p95 延迟代价</text>
+  <text x="1536" y="219" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="13" fill="#646A73">越低越好 · 对数刻度 · 毫秒</text>
+  <line x1="1110" y1="234" x2="1536" y2="234" stroke="#DEE0E3" stroke-width="2"/>
+
+  <rect x="1211" y="254" width="98" height="38" rx="19" fill="#F0F4FC" stroke="#5178C6" stroke-width="2"/>
+  <text x="1260" y="279" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="18" font-weight="700" fill="#5178C6">2.21×</text>
+  <rect x="1399" y="254" width="102" height="38" rx="19" fill="#EAE2FE" stroke="#8569CB" stroke-width="2"/>
+  <text x="1450" y="279" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="18" font-weight="700" fill="#8569CB">15.82×</text>
+
+  <line x1="1130" y1="310" x2="1530" y2="310" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="315" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">1500</text>
+  <line x1="1130" y1="356" x2="1530" y2="356" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="361" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">1000</text>
+  <line x1="1130" y1="426" x2="1530" y2="426" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="431" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">500</text>
+  <line x1="1130" y1="505" x2="1530" y2="505" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="510" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">250</text>
+  <line x1="1130" y1="610" x2="1530" y2="610" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="615" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">100</text>
+  <line x1="1130" y1="690" x2="1530" y2="690" stroke="#DEE0E3" stroke-width="1" stroke-dasharray="5 7"/>
+  <text x="1118" y="695" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">50</text>
+  <path d="M1130 694 V304" stroke="#BBBFC4" stroke-width="2"/>
+  <polygon points="1130,298 1125,309 1135,309" fill="#BBBFC4"/>
+
+  <path d="M1260 433 V343" stroke="#5178C6" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="1260,332 1252,347 1268,347" fill="#5178C6"/>
+  <circle cx="1260" cy="433" r="10" fill="#FFFFFF" stroke="#AEB4BE" stroke-width="4"/>
+  <circle cx="1260" cy="343" r="11" fill="#5178C6" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="1243" y="438" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">L0 468.39</text>
+  <text x="1278" y="348" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#5178C6">1032.84</text>
+  <text x="1260" y="724" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#1F2329">LongMemEval</text>
+
+  <path d="M1450 638 V321" stroke="#8569CB" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="1450,310 1442,325 1458,325" fill="#8569CB"/>
+  <circle cx="1450" cy="638" r="10" fill="#FFFFFF" stroke="#AEB4BE" stroke-width="4"/>
+  <circle cx="1450" cy="321" r="11" fill="#8569CB" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="1433" y="643" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#646A73">L0 78.95</text>
+  <text x="1433" y="326" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#8569CB">1248.58</text>
+  <text x="1450" y="724" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="14" font-weight="700" fill="#1F2329">LoCoMo</text>
+
+  <path d="M1152 747 H1512" stroke="#BBBFC4" stroke-width="1"/>
+  <circle cx="1190" cy="761" r="6" fill="#FFFFFF" stroke="#AEB4BE" stroke-width="3"/>
+  <text x="1204" y="766" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">L0</text>
+  <circle cx="1295" cy="761" r="7" fill="#5178C6"/>
+  <text x="1309" y="766" font-family="Noto Sans SC, sans-serif" font-size="12" fill="#646A73">加入 Embedding</text>
+
+  <g filter="url(#softShadow)">
+    <rect x="60" y="790" width="1480" height="72" rx="18" fill="#FEF1CE" stroke="#D4B45B" stroke-width="2"/>
+  </g>
+  <circle cx="98" cy="826" r="18" fill="#D4B45B"/>
+  <text x="98" y="833" text-anchor="middle" font-family="Noto Sans SC, sans-serif" font-size="22" font-weight="700" fill="#FFFFFF">!</text>
+  <text x="130" y="819" font-family="Noto Sans SC, sans-serif" font-size="13" font-weight="700" fill="#8C6A12">指标口径</text>
+  <text x="130" y="845" font-family="Noto Sans SC, sans-serif" font-size="21" font-weight="700" fill="#1F2329">证据检索，不是最终问答准确率</text>
+  <text x="1510" y="836" text-anchor="end" font-family="Noto Sans SC, sans-serif" font-size="14" fill="#646A73">Recall-any@10 与 MRR 衡量证据命中和排序，不能等同于最终回答正确率</text>
+</svg>

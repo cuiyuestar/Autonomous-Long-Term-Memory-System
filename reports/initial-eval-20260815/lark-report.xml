@@ -1,7 +1,7 @@
 <title>ALTM 记忆系统首轮量化评测与验证报告</title>
 
 <callout emoji="📌" background-color="light-blue" border-color="blue">
-  <p><b>本轮结论：</b>系统的基础正确性、运行时接入、跨范围隔离和真实关系图涌现均已通过验证。公开数据集结果是纯 L0 原始记忆检索基线，用来建立后续分层记忆、远程向量、关系图和生命周期增强的统一参照，不代表系统最终能力上限。</p>
+  <p><b>更新结论：</b>系统的基础正确性、运行时接入、跨范围隔离和真实关系图涌现均已通过验证。后续已在相同公开数据、问题和 Top-K 下完成 L0 与 L0 + Embedding 的受控消融；远程语义向量显著提升证据召回，但增加在线查询延迟。结果不代表最终问答准确率或 L3/L4 形成质量。</p>
 </callout>
 
 <h1>1. 执行摘要</h1>
@@ -18,7 +18,7 @@
     </tr>
   </thead>
   <tbody>
-    <tr><td>领域行为测试</td><td>162 项</td><td>162 / 162 通过</td><td>分层记忆、召回、治理、生命周期与运行协议行为稳定</td></tr>
+    <tr><td>领域行为测试</td><td>169 项</td><td>169 / 169 通过</td><td>分层记忆、召回、治理、生命周期与运行协议行为稳定</td></tr>
     <tr><td>Harness 生命周期测试</td><td>3 项</td><td>3 / 3 通过</td><td>提交、异常终止和热卸载收敛正确</td></tr>
     <tr><td>运行时健康门禁</td><td>8 项</td><td>8 / 8 通过</td><td>插件、服务、后台处理、Web、只读接口与鉴权均正常</td></tr>
     <tr><td>跨仓组装验证</td><td>6 个关键场景</td><td>全部通过</td><td>召回、引用反馈、隔离和故障降级成立</td></tr>
@@ -32,7 +32,7 @@
 
 <p>公开数据集部分只测“证据是否被检索到以及排序位置”，没有让统一回答模型生成最终答案，因此不能把本报告中的 Recall、MRR 或 nDCG 解释成最终问答正确率。LoCoMo 使用公开全集；LongMemEval 使用清洗版前 100 题，其中包含 70 题单会话事实和 30 题多会话事实，不是覆盖所有题型的分层抽样。</p>
 
-<p>当前模型服务可支持会话摘要、原子事实、关系抽取和治理判断，但没有可用的远程 Embedding 接口。因此本轮不宣称远程向量、L3 跨会话场景、L4 稳定画像的真实线上效果。相关模块已有确定性测试覆盖，但需要接入兼容的 Embedding 服务后才能给出真实模型量化分数。</p>
+<p>当前已接入 OpenAI-compatible Embedding Provider，并使用 text-embedding-v4 的 1,024 维向量完成生产记忆索引和公开数据集消融。该结果证明远程语义召回链路有效，但不直接证明 L3 跨会话场景和 L4 稳定画像的形成质量；这两层仍需独立 gold 标签和长期演化样本。</p>
 
 <h1>3. 系统内部模块构成</h1>
 
@@ -119,18 +119,46 @@
   </tbody>
 </table>
 
+<h2>6.2 Embedding 受控消融</h2>
+
+<p>Embedding 组只在同一 L0 原始记忆上增加远程语义向量，不包含 L1-L4、Graph、Active Window 或 CCR。LongMemEval 的唯一记忆向量覆盖为 49,776 / 49,776，LoCoMo 为 5,882 / 5,882。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th background-color="light-gray">数据集</th>
+      <th background-color="light-gray">方案</th>
+      <th background-color="light-gray">Recall-any@10</th>
+      <th background-color="light-gray">Recall-all@10</th>
+      <th background-color="light-gray">nDCG@10</th>
+      <th background-color="light-gray">MRR</th>
+      <th background-color="light-gray">p95</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>LongMemEval 100 题</td><td>L0</td><td>80.00%</td><td>62.00%</td><td>58.21%</td><td>58.48%</td><td>468.39 ms</td></tr>
+    <tr><td>LongMemEval 100 题</td><td>L0 + Embedding</td><td>100.00%</td><td>82.00%</td><td>84.54%</td><td>85.82%</td><td>1,032.84 ms</td></tr>
+    <tr><td>LoCoMo 全集</td><td>L0</td><td>37.13%</td><td>31.69%</td><td>23.01%</td><td>20.68%</td><td>78.95 ms</td></tr>
+    <tr><td>LoCoMo 全集</td><td>L0 + Embedding</td><td>66.40%</td><td>55.05%</td><td>42.96%</td><td>39.53%</td><td>1,248.58 ms</td></tr>
+  </tbody>
+</table>
+
+<p><b>效果。</b>LongMemEval Recall-any@10 提升 20.00 个百分点，LoCoMo 提升 29.26 个百分点；两套数据的全部召回和排序指标均提升。</p>
+
+<p><b>代价。</b>LongMemEval p95 延迟为基线的 2.21 倍，LoCoMo 为 15.82 倍。当前每个 query 都访问远程 Embedding Provider，后续应评估查询向量缓存、本地模型服务和延迟感知路由。</p>
+
 <h1>7. 能力判断</h1>
 
 <p><b>已经被真实证据支持的能力。</b>原始交互可持久记录；记忆上下文可进入模型请求并保留来源；最终回答中的 marker 能形成真实引用反馈；非法引用被拒绝；跨 Agent 范围不会读取私有记忆；关系图可以找回字面和直接向量均未命中的关联经验；拒绝关系和终态记忆不会继续传播。</p>
 
 <p><b>当前最明显的优势方向。</b>系统不是单一向量库，而是将分层记忆、关系传播、可逆压缩、作用域和生命周期放在同一条链路内。真实 Graph-only 正负对照已经证明关系传播机制成立，下一步只需把这一增益扩展到公开多跳、时间和因果数据集。</p>
 
-<p><b>当前最明显的短板。</b>纯 L0 基线在多证据覆盖上较弱，尤其是 LoCoMo 多跳问题。公开评测目前尚未覆盖最终答案正确率、陈旧记忆惩罚、过度个性化、Embedding 驱动的 L3/L4 形成以及百万 token 容量曲线。</p>
+<p><b>当前最明显的短板。</b>Embedding 明显改善多证据覆盖，但远程 query embedding 带来显著尾延迟。公开评测目前尚未覆盖最终答案正确率、陈旧记忆惩罚、过度个性化、L3/L4 形成质量以及百万 token 容量曲线。</p>
 
 <h1>8. 下一阶段测试计划</h1>
 
 <ol>
-  <li seq="auto">接入兼容的 Embedding 服务，在完全相同的回答模型和 token 预算下执行 L0、L1/L2、Graph、L3、L4、主动窗口和 CCR 的逐项消融。</li>
+  <li seq="auto">在已完成 L0 + Embedding 消融的基础上，继续执行 L1/L2、Graph、L3、L4、主动窗口和 CCR 的逐项消融。</li>
   <li seq="auto">为公开数据集增加统一回答模型，分别报告证据召回、答案正确率、拒答正确率、引用准确率和 token 成本。</li>
   <li seq="auto">在 LoCoMo 上重点验证多跳与时间题，在 LongMemEval 上重点验证多会话 Recall-all 和知识更新。</li>
   <li seq="auto">引入 Memora 的 FAMA，量化当前有效记忆使用率与陈旧记忆泄漏率；引入过度个性化负例，约束 L4 和主动窗口。</li>
