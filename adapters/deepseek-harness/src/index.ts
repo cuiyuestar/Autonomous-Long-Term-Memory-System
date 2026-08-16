@@ -27,6 +27,17 @@ const DEFAULT_ACTIVE_LIMIT = 5;
 /** Cordis plugin name used in durable message attribution and diagnostics. */
 export const name = "altm-memory";
 
+/**
+ * Experimental agent presets that seed an anchor turn (whoami / zero-tool)
+ * or otherwise bootstrap from a Minimal-exact first request. ALTM skips its
+ * first-turn memory injection there so the anchor request stays pristine.
+ */
+export const NO_FIRST_TURN_MEMORY_PRESETS: ReadonlySet<string> = new Set([
+  "anchored-standard",
+  "whoami-standard",
+  "zero-anchored-standard",
+]);
+
 /** Listeners mount before the Agent service so the first turn cannot race setup. */
 export const inject: string[] = [];
 
@@ -161,11 +172,15 @@ export function apply(ctx: Context, config: Config): void {
     next,
   ): Promise<PreStepDecision> => {
     const decision = await next();
+    const preset = String(
+      (agent.session.header as { agentPreset?: string }).agentPreset ?? "",
+    );
     if (
       decision.kind === "reject"
       || step !== 1
       || signal.aborted
       || closing
+      || (turn === 1 && NO_FIRST_TURN_MEMORY_PRESETS.has(preset))
     ) {
       return decision;
     }

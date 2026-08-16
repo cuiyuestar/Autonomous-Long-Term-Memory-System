@@ -73,14 +73,14 @@ async function harness() {
   return { ctx, provider, consumer };
 }
 
-async function prepare(ctx, subject) {
+async function prepare(ctx, subject, turn = 1) {
   const message = directMessage();
   return ctx.waterfall(
     "agent/pre-step",
     {
       agent: { session: subject },
       messages: [message],
-      turn: 1,
+      turn,
       step: 1,
       signal: new AbortController().signal,
     },
@@ -172,5 +172,23 @@ test("completed turn commits its final Assistant message", async () => {
   assert.equal(provider.aborted.length, 0);
   assert.equal(provider.committed.length, 1);
   assert.equal(provider.committed[0].assistantContent, "final");
+  await ctx.fiber.dispose();
+});
+
+
+test("anchor presets skip memory only on the first turn", async () => {
+  const { ctx, provider } = await harness();
+  const subject = session();
+  subject.header.agentPreset = "whoami-standard";
+
+  const first = await prepare(ctx, subject, 1);
+  assert.equal(first.messages.length, 1);
+  assert.equal(provider.prepared.length, 0);
+
+  const second = await prepare(ctx, subject, 2);
+  assert.equal(second.messages.length, 2);
+  assert.equal(second.messages.at(-1).source.plugin, "altm-memory");
+  assert.equal(provider.prepared.length, 1);
+
   await ctx.fiber.dispose();
 });
