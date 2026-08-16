@@ -180,7 +180,7 @@ export function apply(ctx: Context, config: Config): void {
       || step !== 1
       || signal.aborted
       || closing
-      || NO_FIRST_TURN_MEMORY_PRESETS.has(preset)
+      || (turn === 1 && NO_FIRST_TURN_MEMORY_PRESETS.has(preset))
     ) {
       return decision;
     }
