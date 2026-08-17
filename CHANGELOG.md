@@ -1,35 +1,35 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project are documented in this file.
+本文件记录项目的重要变更。
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/spec/v2.0.0.html)。
 
-## [Unreleased]
+## [未发布]
 
 ## [1.1.0] - 2026-08-17
 
-### Added
+### 新增
 
-- Layer-aware cross-session Query Recall: L0/L1 remain session-local while L2-L4 can be retrieved across sessions inside their existing MemoryScope.
-- Windows CI coverage for SQLite temporary-database cleanup and the DeepSeek Harness adapter build.
+- 分层跨会话 Query Recall：L0/L1 保持当前 session 内检索，L2-L4 可在既有 MemoryScope 内跨 session 召回。
+- Windows CI 覆盖 SQLite 临时数据库清理和 DeepSeek Harness adapter 构建。
 
-### Changed
+### 变更
 
-- Updated the Python package, TypeScript SDK, DeepSeek Harness adapter, OpenClaw adapter, and Hermes plugin to version 1.1.0.
-- Made the local Harness stack discover the generated adapter package instead of embedding a versioned tarball filename.
+- Python 包、TypeScript SDK、DeepSeek Harness adapter、OpenClaw adapter 和 Hermes plugin 统一升级到 1.1.0。
+- 本地 Harness stack 改为发现构建生成的 adapter 包，不再硬编码带版本号的 tarball 文件名。
 
-### Fixed
+### 修复
 
-- Applied `strict_session` consistently to direct FTS, local vector, remote vector, graph, and fallback recall, including contexts built with the Active Window disabled.
-- Converted adapter build URLs with `fileURLToPath()` so Windows drive-letter paths and encoded filesystem characters are handled correctly.
-- Closed SQLite connections deterministically when transaction contexts exit, preventing Windows `WinError 32` failures during temporary-directory cleanup.
+- `strict_session` 现在一致作用于 direct FTS、local vector、remote vector、graph 和 fallback recall，包括关闭 Active Window 时构建的上下文。
+- adapter 构建脚本改用 `fileURLToPath()` 转换文件 URL，正确处理 Windows 盘符路径和已编码的文件系统字符。
+- SQLite transaction context 退出时确定性关闭连接，避免 Windows 临时目录清理时触发 `WinError 32`。
 
 ## [1.0.0] - 2026-08-09
 
-### Added
+### 新增
 
-- Initial ALTM release with L0-L4 memory evolution, hybrid retrieval, heterogeneous graph emergence, lifecycle governance, CCR context management, MCP, TypeScript, and Agent adapters.
+- ALTM 初始版本，包含 L0-L4 记忆演化、混合召回、异构图经验涌现、生命周期治理、CCR 上下文管理、MCP、TypeScript SDK 和 Agent adapters。
 
-[Unreleased]: https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/compare/v1.1.0...HEAD
+[未发布]: https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/releases/tag/v1.0.0
