@@ -212,7 +212,18 @@ install_plugin() {
     restart_web=true
   fi
   build_artifacts
-  local package_path="$ALTM_ROOT/data/plugin-pack/altm-deepseek-harness-1.0.0.tgz"
+  local package_path
+  package_path="$(
+    find "$ALTM_ROOT/data/plugin-pack" \
+      -maxdepth 1 \
+      -name 'altm-deepseek-harness-*.tgz' \
+      -print \
+      -quit
+  )"
+  if [[ -z "$package_path" ]]; then
+    echo "built DeepSeek Harness adapter package is missing" >&2
+    return 1
+  fi
   (
     cd "$DSH_REPO"
     if plugin_installed; then

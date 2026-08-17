@@ -55,6 +55,7 @@ class RemoteVectorRetriever:
         layers: Sequence[MemoryLayer] = (),
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] = (),
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[tuple[MemoryUnit, float]]:
         query_vector = self.client.embed_text(query)
         return self.store.search_embeddings(
@@ -64,4 +65,5 @@ class RemoteVectorRetriever:
             layers=layers,
             session_id=session_id,
             statuses=statuses,
+            cross_session_layers=cross_session_layers,
         )

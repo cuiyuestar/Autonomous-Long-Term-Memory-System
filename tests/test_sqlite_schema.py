@@ -2,6 +2,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,13 +21,25 @@ from altm.utils import sha256_text, utc_now_iso  # noqa: E402
 
 
 class SQLiteSchemaTest(unittest.TestCase):
+    def test_store_connection_closes_after_transaction_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SQLiteMemoryStore(Path(tmpdir) / "memory.sqlite3")
+            store.initialize()
+            connection = store.connect()
+
+            with connection:
+                connection.execute("SELECT 1").fetchone()
+
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
+
     def test_initialize_creates_core_tables_and_fts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "memory.sqlite3"
             store = SQLiteMemoryStore(db_path)
             store.initialize()
 
-            with sqlite3.connect(str(db_path)) as connection:
+            with closing(sqlite3.connect(str(db_path))) as connection:
                 tables = {
                     row[0]
                     for row in connection.execute(
@@ -65,7 +78,7 @@ class SQLiteSchemaTest(unittest.TestCase):
             self.assertIn("l2_temporal_facts", tables)
             self.assertIn("l2_lessons", tables)
 
-            with sqlite3.connect(str(db_path)) as connection:
+            with closing(sqlite3.connect(str(db_path))) as connection:
                 memory_unit_columns = {
                     row[1] for row in connection.execute("PRAGMA table_info(memory_units)")
                 }
@@ -86,7 +99,7 @@ class SQLiteSchemaTest(unittest.TestCase):
     def test_initialize_migrates_legacy_memory_scope_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "legacy.sqlite3"
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 connection.execute(
                     """
                     CREATE TABLE memory_units (
@@ -119,7 +132,7 @@ class SQLiteSchemaTest(unittest.TestCase):
 
             SQLiteMemoryStore(db_path).initialize()
 
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 columns = {
                     row[1] for row in connection.execute("PRAGMA table_info(memory_units)")
                 }
@@ -146,7 +159,7 @@ class SQLiteSchemaTest(unittest.TestCase):
     def test_initialize_migrates_runtime_cycle_abort_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "legacy-cycle.sqlite3"
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 connection.execute(
                     """
                     CREATE TABLE runtime_cycles (
@@ -181,7 +194,7 @@ class SQLiteSchemaTest(unittest.TestCase):
 
             SQLiteMemoryStore(db_path).initialize()
 
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 table_sql = connection.execute(
                     """
                     SELECT sql FROM sqlite_master

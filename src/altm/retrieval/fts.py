@@ -41,6 +41,7 @@ class FTSRetrievalEngine:
                     layers=query.preferred_layers,
                     session_id=query.session_id,
                     statuses=query.statuses,
+                    cross_session_layers=query.cross_session_layers,
                 )
             except RuntimeError:
                 degraded_channels.append("remote_vector")
@@ -60,6 +61,7 @@ class FTSRetrievalEngine:
                         layers=query.preferred_layers,
                         session_id=query.session_id,
                         statuses=query.statuses,
+                        cross_session_layers=query.cross_session_layers,
                     )
                 ],
             )
@@ -71,6 +73,7 @@ class FTSRetrievalEngine:
             layers=query.preferred_layers,
             session_id=query.session_id,
             statuses=query.statuses,
+            cross_session_layers=query.cross_session_layers,
         )
         channels.append(("fts_trigram", list(trigram_units)))
 
@@ -80,6 +83,7 @@ class FTSRetrievalEngine:
             layers=query.preferred_layers,
             session_id=query.session_id,
             statuses=query.statuses,
+            cross_session_layers=query.cross_session_layers,
         )
         channels.append(("fts_unicode", list(unicode_units)))
 
@@ -103,6 +107,7 @@ class FTSRetrievalEngine:
                 layers=query.preferred_layers,
                 session_id=query.session_id,
                 statuses=query.statuses,
+                cross_session_layers=query.cross_session_layers,
             )
             channels.append(("like_fallback", list(like_units)))
 

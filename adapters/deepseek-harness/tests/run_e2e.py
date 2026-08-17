@@ -12,6 +12,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from contextlib import closing
 from pathlib import Path
 
 ADAPTER_ROOT = Path(__file__).resolve().parents[1]
@@ -347,7 +348,7 @@ def _session_recall_context(root: Path, session_id: str) -> str:
 
 
 def _inspect_database(path: Path) -> dict[str, object]:
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection:
         connection.row_factory = sqlite3.Row
         cycles = connection.execute(
             """

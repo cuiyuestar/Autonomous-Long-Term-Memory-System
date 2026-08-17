@@ -15,7 +15,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from importlib.resources import files
 from pathlib import Path
-from typing import cast
+from types import TracebackType
+from typing import Literal, cast
 
 import sqlite_vec  # pyright: ignore[reportMissingTypeStubs]
 
@@ -42,6 +43,7 @@ from altm.contracts import (
     SceneBlock,
     ScoreBreakdown,
 )
+from altm.recall_policy import memory_matches_recall_session
 from altm.utils import random_id, stable_id, utc_now_iso
 
 _PACKAGED_SCHEMA_PATH = Path(
@@ -77,6 +79,21 @@ _GRAPH_EDGE_PROTECTED_METADATA_KEYS = {
     "rollback_at",
     "destructive_action_allowed",
 }
+
+
+class _ClosingConnection(sqlite3.Connection):
+    """SQLite transaction context that also releases its file handle."""
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> Literal[False]:
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
 
 
 def _row_to_graph_edge(row: sqlite3.Row) -> dict[str, object]:
@@ -271,6 +288,31 @@ def _vector_norm(vector: Sequence[float]) -> float:
     return math.sqrt(sum(float(value) * float(value) for value in vector))
 
 
+def _recall_session_filter(
+    session_id: str | None,
+    cross_session_layers: Sequence[MemoryLayer],
+    table: str | None = None,
+) -> tuple[str | None, list[str]]:
+    if session_id is None:
+        return None, []
+    prefix = "%s." % table if table else ""
+    metadata = "%smetadata_json" % prefix
+    if not cross_session_layers:
+        return "json_extract(%s, '$.session_id') = ?" % metadata, [session_id]
+    placeholders = ", ".join("?" for _ in cross_session_layers)
+    return (
+        (
+            "(json_extract(%s, '$.session_id') = ? OR "
+            "(%slayer IN (%s) "
+            "AND COALESCE(json_extract(%s, '$.review_status'), '') != 'rejected' "
+            "AND COALESCE(json_extract(%s, '$.governance_review_status'), '') "
+            "!= 'rejected'))"
+        )
+        % (metadata, prefix, placeholders, metadata, metadata),
+        [session_id, *(layer.value for layer in cross_session_layers)],
+    )
+
+
 class SQLiteMemoryStore:
     def __init__(
         self,
@@ -289,7 +331,10 @@ class SQLiteMemoryStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         schema = self.schema_path.read_text(encoding="utf-8")
 
-        with sqlite3.connect(str(self.db_path)) as connection:
+        with sqlite3.connect(
+            str(self.db_path),
+            factory=_ClosingConnection,
+        ) as connection:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.execute("PRAGMA busy_timeout = 5000")
             connection.executescript(schema)
@@ -297,7 +342,10 @@ class SQLiteMemoryStore:
             connection.commit()
 
     def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(str(self.db_path))
+        connection = sqlite3.connect(
+            str(self.db_path),
+            factory=_ClosingConnection,
+        )
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA busy_timeout = 5000")
@@ -2043,6 +2091,7 @@ class SQLiteMemoryStore:
         layers: Sequence[MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] | None = None,
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[tuple[MemoryUnit, float]]:
         if not query_vector or _vector_norm(query_vector) == 0:
             return []
@@ -2082,7 +2131,11 @@ class SQLiteMemoryStore:
                         continue
                 elif memory.status in {MemoryStatus.DELETED, MemoryStatus.TOMBSTONED}:
                     continue
-                if session_id is not None and memory.metadata.get("session_id") != session_id:
+                if not memory_matches_recall_session(
+                    memory,
+                    session_id,
+                    cross_session_layers,
+                ):
                     continue
                 score = max(0.0, 1.0 - float(row["distance"]))
                 scored.append((memory, score))
@@ -2097,9 +2150,18 @@ class SQLiteMemoryStore:
         layers: Sequence[MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] | None = None,
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[MemoryUnit]:
         with self.connect() as connection:
-            rows = self._search_fts_rows(connection, query, limit, layers, session_id, statuses)
+            rows = self._search_fts_rows(
+                connection,
+                query,
+                limit,
+                layers,
+                session_id,
+                statuses,
+                cross_session_layers,
+            )
             units: list[MemoryUnit] = []
             for row in rows:
                 memory = self.get_memory_unit(row["memory_id"])
@@ -2114,6 +2176,7 @@ class SQLiteMemoryStore:
         layers: Sequence[MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] | None = None,
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[MemoryUnit]:
         with self.connect() as connection:
             rows = self._search_fts_rows(
@@ -2123,6 +2186,7 @@ class SQLiteMemoryStore:
                 layers,
                 session_id,
                 statuses,
+                cross_session_layers,
                 table="memory_units_fts_trigram",
             )
             units: list[MemoryUnit] = []
@@ -2139,6 +2203,7 @@ class SQLiteMemoryStore:
         layers: Sequence[MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] | None = None,
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[MemoryUnit]:
         clauses = ["(content LIKE ? OR summary LIKE ?)"]
         params: list[str] = ["%%%s%%" % query, "%%%s%%" % query]
@@ -2155,9 +2220,13 @@ class SQLiteMemoryStore:
             params.extend(status.value for status in statuses)
         else:
             clauses.append("status NOT IN ('deleted', 'tombstoned')")
-        if session_id is not None:
-            clauses.append("json_extract(metadata_json, '$.session_id') = ?")
-            params.append(session_id)
+        session_filter, session_params = _recall_session_filter(
+            session_id,
+            cross_session_layers,
+        )
+        if session_filter is not None:
+            clauses.append(session_filter)
+            params.extend(session_params)
         params.append(str(limit))
         with self.connect() as connection:
             rows = connection.execute(
@@ -3487,6 +3556,7 @@ class SQLiteMemoryStore:
         layers: Sequence[MemoryLayer] | None = None,
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] | None = None,
+        cross_session_layers: Sequence[MemoryLayer] = (),
         table: str = "memory_units_fts",
     ) -> Sequence[sqlite3.Row]:
         def build_sql() -> tuple[str, list[str]]:
@@ -3505,9 +3575,14 @@ class SQLiteMemoryStore:
             else:
                 clauses.append("memory_units.status NOT IN ('deleted', 'tombstoned')")
 
-            if session_id is not None:
-                clauses.append("json_extract(memory_units.metadata_json, '$.session_id') = ?")
-                params.append(session_id)
+            session_filter, session_params = _recall_session_filter(
+                session_id,
+                cross_session_layers,
+                table="memory_units",
+            )
+            if session_filter is not None:
+                clauses.append(session_filter)
+                params.extend(session_params)
             if self.scope is not None:
                 clauses.append(self._memory_scope_predicate("memory_units"))
                 params.extend(self._memory_scope_params())

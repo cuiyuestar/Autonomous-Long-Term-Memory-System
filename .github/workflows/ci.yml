@@ -86,3 +86,29 @@ jobs:
       - name: Test and build adapter
         working-directory: adapters/deepseek-harness
         run: npm test
+
+  windows-compatibility:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Python package
+        run: python -m pip install -e .
+      - name: Test SQLite cleanup and session recall
+        run: python -m unittest tests.test_sqlite_schema tests.test_recall_session_policy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            adapters/typescript/package-lock.json
+            adapters/deepseek-harness/package-lock.json
+      - name: Build TypeScript SDK
+        working-directory: adapters/typescript
+        run: npm ci && npm run build
+      - name: Test and build DeepSeek Harness adapter
+        working-directory: adapters/deepseek-harness
+        run: npm ci && npm test

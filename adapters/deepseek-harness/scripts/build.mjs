@@ -1,7 +1,12 @@
 import { readFile, rm } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { transform } from "lightningcss";
+
+const modulePath = (relativePath) =>
+  fileURLToPath(new URL(relativePath, import.meta.url));
+const outdir = modulePath("../lib");
 
 await rm(new URL("../lib", import.meta.url), {
   recursive: true,
@@ -10,13 +15,13 @@ await rm(new URL("../lib", import.meta.url), {
 
 await build({
   entryPoints: {
-    index: new URL("../src/root.ts", import.meta.url).pathname,
-    consumer: new URL("../src/index.ts", import.meta.url).pathname,
-    memory: new URL("../src/memory.ts", import.meta.url).pathname,
-    provider: new URL("../src/provider.ts", import.meta.url).pathname,
-    "ui-host": new URL("../src/ui-host.ts", import.meta.url).pathname
+    index: modulePath("../src/root.ts"),
+    consumer: modulePath("../src/index.ts"),
+    memory: modulePath("../src/memory.ts"),
+    provider: modulePath("../src/provider.ts"),
+    "ui-host": modulePath("../src/ui-host.ts")
   },
-  outdir: new URL("../lib", import.meta.url).pathname,
+  outdir,
   bundle: true,
   platform: "node",
   target: "node22",
@@ -73,9 +78,9 @@ const cssPlugin = {
 
 await build({
   entryPoints: {
-    client: new URL("../src/client/index.tsx", import.meta.url).pathname
+    client: modulePath("../src/client/index.tsx")
   },
-  outdir: new URL("../lib", import.meta.url).pathname,
+  outdir,
   bundle: true,
   platform: "browser",
   target: "es2022",

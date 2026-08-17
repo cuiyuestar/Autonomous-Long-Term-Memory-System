@@ -486,6 +486,9 @@ class RecallQuery(MemoryModel):
         default_factory=lambda: list[MemoryLayer]()
     )
     session_id: str | None = None
+    cross_session_layers: list[MemoryLayer] = Field(
+        default_factory=lambda: list[MemoryLayer]()
+    )
     statuses: list[MemoryStatus] = Field(
         default_factory=lambda: list[MemoryStatus]()
     )

@@ -8,6 +8,7 @@ from typing import cast
 
 from altm.contracts import MemoryStatus, MemoryUnit, RecallCandidate, RecallQuery, ScoreBreakdown
 from altm.lifecycle import adjust_retrieval_score
+from altm.recall_policy import memory_matches_recall_session
 from altm.retrieval.fts import FTSRetrievalEngine
 from altm.storage import SQLiteMemoryStore
 
@@ -149,9 +150,11 @@ def _memory_allowed(memory: MemoryUnit, query: RecallQuery) -> bool:
         return False
     if query.statuses and memory.status not in query.statuses:
         return False
-    if query.session_id is not None and memory.metadata.get("session_id") != query.session_id:
-        return False
-    return True
+    return memory_matches_recall_session(
+        memory,
+        query.session_id,
+        query.cross_session_layers,
+    )
 
 
 def _float_value(value: object) -> float:

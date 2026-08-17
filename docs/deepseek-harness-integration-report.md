@@ -180,4 +180,4 @@ npm run build
 
 - 全量测试使用真实本地 HTTP server 验证外部请求、解析、失败和持久化。针对性验证另行使用真实 DeepSeek Chat 完成 Harness 两轮召回与 Graph 涌现，并使用真实 `text-embedding-v4` 完成生产记忆索引与 LongMemEval、LoCoMo 向量消融。该结果仍不代表 L3/L4 形成质量、线上费用或最终答案准确率。
 - 没有运行 DeepSeek Harness 全仓测试，因为 Harness 源码零改动；发布产物通过真实 profile、Loader、agent loop 和 persistence 组装测试。
-- 直接 L0 查询召回按 ALTM `session_id` 过滤。跨 session 记忆依赖 worker 形成的 L2/L3/L4 和 active window；该行为由 ALTM 专门的跨 session、L3/L4 和自治治理测试覆盖，适配器 E2E 不把短期 L0 误当成长记忆。
+- 直接 L0 查询召回按 ALTM `session_id` 过滤。自 1.1.0 起，非严格 Query Recall 允许 worker 形成的 L2/L3/L4 在同一 MemoryScope 内跨 session 检索；L0/L1 仍保持当前 session 隔离，Active Window 继续使用独立的生命周期门控。适配器 E2E 不把短期 L0 误当成长记忆。

@@ -113,13 +113,15 @@ The bundle reads the API key by reference. With the standard Harness credential 
 | `recallLimit` | Consumer | `10` | Maximum direct recall candidates. |
 | `activeWindowMode` | Consumer | omitted | Optional `off`, `limited`, or `full` active-window policy. |
 | `activeLimit` | Consumer | `5` | Maximum active-window memories. |
-| `strictSession` | Consumer | `false` | Restrict recall to the current Harness session. |
+| `strictSession` | Consumer | `false` | When true, restrict every memory layer to the current Harness session. |
 
 The shipped bundle also accepts `ALTM_MCP_ENDPOINT`, `ALTM_MCP_API_KEY_ENV`, `ALTM_TENANT_ID`, `ALTM_WORKSPACE_ID`, `ALTM_USER_ID`, and `ALTM_AGENT_ID`. A profile-level patch can replace the row's complete `config`.
 
 ## Scope Semantics
 
 Harness session ids map to ALTM `session_id`; Harness turn numbers map to ALTM `turn_id`. `agentId` is deliberately configuration-owned because a Harness `Agent.id` is its session id and would prevent cross-session long-term recall.
+
+With the default `strictSession: false`, query recall keeps L0/L1 inside the current Harness session and allows L2-L4 memories from other sessions inside the same ALTM scope. L2/L3 remain Agent-scoped; L4 retains its user-workspace visibility. The proactive active window remains lifecycle-gated, so cross-session query relevance does not make every memory resident context.
 
 Only direct user-source messages start an ALTM cycle. Tool-only continuation steps, injected plugin context, and turns rejected before entry are not captured as new user turns. Later user steering inside an already-open Harness turn remains part of Harness history but does not rewrite the ALTM prepare input.
 

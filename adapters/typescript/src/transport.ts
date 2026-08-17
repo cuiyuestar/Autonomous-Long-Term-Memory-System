@@ -29,7 +29,7 @@ export class StreamableHttpToolCaller implements RuntimeToolCaller {
     }
     const client = new Client({
       name: options.clientName ?? "altm-typescript-sdk",
-      version: options.clientVersion ?? "1.0.0"
+      version: options.clientVersion ?? "1.1.0"
     });
     const transport = new StreamableHTTPClientTransport(
       new URL(options.url),

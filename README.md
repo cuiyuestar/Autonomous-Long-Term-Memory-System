@@ -4,13 +4,13 @@
 
 **具备自主经验涌现与上下文治理能力的 Agent 长期记忆系统**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-2563EB)](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System)
+[![Version](https://img.shields.io/badge/version-1.1.0-2563EB)](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![CI](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/actions/workflows/ci.yml/badge.svg)](https://github.com/cuiyuestar/Autonomous-Long-Term-Memory-System/actions/workflows/ci.yml)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20HTTP-111827)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache--2.0-22C55E)](LICENSE)
 
-[DeepSeek Harness](#deepseek-harness) · [架构](#架构) · [核心能力](#核心能力) · [快速开始](#快速开始) · [Agent 接入](#agent-接入) · [MCP](#mcp-接入) · [评估](#评估)
+[DeepSeek Harness](#deepseek-harness) · [架构](#架构) · [核心能力](#核心能力) · [快速开始](#快速开始) · [Agent 接入](#agent-接入) · [MCP](#mcp-接入) · [评估](#评估) · [更新日志](CHANGELOG.md)
 
 </div>
 
@@ -45,6 +45,7 @@ prepare_turn -> Host Agent 生成回复 -> commit_turn
 | 自主经验形成 | 后台任务从持续交互中抽取事实、关系、跨会话场景和 Persona Facet |
 | 自主经验涌现（查询诱导） | 从直接命中的记忆出发，沿经验关系图扩展，找回关键词和向量检索未直接命中的关联经验 |
 | 混合召回 | FTS5、local vector、OpenAI-compatible embedding、sqlite-vec、Graph PPR、标准 RRF |
+| 分层跨会话召回 | 非严格模式下 L0/L1 保持当前 session，L2-L4 可在同一 MemoryScope 内按查询跨 session 召回 |
 | CCR 上下文治理 | 按内容类型压缩，保存原文与压缩版本，通过稳定 marker 按需下钻 |
 | 自治治理 | LLM Rubric 驱动的语义去重、L3/L4 形成、冲突判断和高置信覆盖 |
 | 生命周期 | 引用与反馈回写、晋升、降级、压缩、保留、删除、证据修复 |
@@ -73,6 +74,8 @@ Python 3.11+ 承担领域逻辑和持久化。TypeScript 与各 Host adapter 只
 | L4 | 稳定用户画像 Persona Facet | 跨 session/Agent 证据 + observation | 同用户工作区 |
 
 L0-L3 隔离到 `agent_id`。L4 只在相同 `tenant_id / workspace_id / user_id` 内共享。
+
+Query Recall 默认采用分层会话策略：L0/L1 原始与会话级内容仅在当前 session 内检索，L2/L3 可在同一 Agent scope 内跨 session 检索，L4 可在同一用户工作区内跨 Agent 检索。`strict_session=true` 时所有层都限制为当前 session。Active Window 保持更保守的主动注入策略，其他 session 的记忆仍需满足全局归属或长期生命周期条件。
 
 ## 核心能力
 
@@ -641,7 +644,7 @@ sqlite3 :memory: ".read schemas/sqlite/001_initial.sql"
 当前验证基线：
 
 ```text
-169 tests passed
+172 tests passed
 Ruff passed
 Strict Pyright: 0 errors, 0 warnings
 TypeScript SDK typecheck/build passed
@@ -652,9 +655,9 @@ isolated Python 3.11 wheel initialization passed
 Streamable HTTP auth: invalid 401 / valid initialize 200
 ```
 
-## 1.0.0 边界
+## 1.1.0 边界
 
-1.0.0 已覆盖完整 runtime cycle、查询诱导的经验涌现、CCR、L4 supersede、C0-C4 压缩状态和本地 SQLite 持久化。以下项目尚未纳入发布承诺：
+1.1.0 在完整 runtime cycle、查询诱导经验涌现、CCR 和生命周期治理基础上，增加 L2-L4 分层跨会话 Query Recall、Windows adapter 构建支持和确定性 SQLite 连接释放。完整版本变化见 [CHANGELOG.md](CHANGELOG.md)。以下项目尚未纳入发布承诺：
 
 - 自动语义 scope split；
 - 独立冷对象存储后端；

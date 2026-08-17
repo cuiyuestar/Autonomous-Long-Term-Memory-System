@@ -1,6 +1,6 @@
 {
   "name": "@altm/openclaw",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenClaw prepare/commit adapter for ALTM",
   "type": "module",
   "license": "Apache-2.0",
@@ -13,7 +13,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@altm/sdk": "^1.0.0"
+    "@altm/sdk": "^1.1.0"
   },
   "peerDependencies": {
     "openclaw": ">=2026.5.31"

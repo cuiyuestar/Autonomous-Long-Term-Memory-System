@@ -69,6 +69,7 @@ from altm.llm import (
     optional_embedding_client_from_sources,
     save_embedding_config,
 )
+from altm.recall_policy import cross_session_query_layers
 from altm.retrieval import (
     FTSRetrievalEngine,
     GlobalActiveWindowEngine,
@@ -1144,6 +1145,7 @@ class AltmApplication:
         session_id: str | None = None,
         statuses: Sequence[str | MemoryStatus] | None = None,
         scope: MemoryScope | None = None,
+        cross_session_layers: Sequence[str | MemoryLayer] | None = None,
     ) -> Sequence[RecallCandidate]:
         store = self.store(scope)
         return FTSRetrievalEngine(
@@ -1156,6 +1158,7 @@ class AltmApplication:
                 scope=scope,
                 preferred_layers=_memory_layers(layers),
                 session_id=session_id,
+                cross_session_layers=_memory_layers(cross_session_layers),
                 statuses=_memory_statuses(statuses),
             )
         )
@@ -1196,6 +1199,7 @@ class AltmApplication:
                 session_id=session_id,
                 statuses=statuses,
                 scope=scope,
+                cross_session_layers=cross_session_query_layers(strict_session),
             )
             return SimpleContextGateway(store=store).assemble(
                 candidates,
@@ -1973,6 +1977,9 @@ class AltmApplication:
                 top_k=recall_limit,
                 preferred_layers=parsed_layers,
                 session_id=session_id,
+                cross_session_layers=list(
+                    cross_session_query_layers(strict_session)
+                ),
                 statuses=parsed_statuses,
             )
         )

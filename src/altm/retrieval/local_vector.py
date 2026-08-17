@@ -15,6 +15,7 @@ from importlib import import_module
 from typing import Protocol, cast
 
 from altm.contracts import MemoryLayer, MemoryStatus, MemoryUnit
+from altm.recall_policy import memory_matches_recall_session
 from altm.storage import SQLiteMemoryStore
 
 
@@ -70,6 +71,7 @@ class LocalVectorRetriever:
         layers: Sequence[MemoryLayer] = (),
         session_id: str | None = None,
         statuses: Sequence[MemoryStatus] = (),
+        cross_session_layers: Sequence[MemoryLayer] = (),
     ) -> Sequence[tuple[MemoryUnit, float]]:
         query_tokens = tokenize_for_local_vector(query)
         candidates = self.store.list_memory_units(limit=1000)
@@ -77,9 +79,16 @@ class LocalVectorRetriever:
         for memory in candidates:
             if layers and memory.layer not in layers:
                 continue
-            if statuses and memory.status not in statuses:
+            if statuses:
+                if memory.status not in statuses:
+                    continue
+            elif memory.status in {MemoryStatus.DELETED, MemoryStatus.TOMBSTONED}:
                 continue
-            if session_id is not None and memory.metadata.get("session_id") != session_id:
+            if not memory_matches_recall_session(
+                memory,
+                session_id,
+                cross_session_layers,
+            ):
                 continue
             text = "%s\n%s" % (memory.content, memory.summary or "")
             score = cosine_similarity(query_tokens, tokenize_for_local_vector(text))

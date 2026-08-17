@@ -1,6 +1,6 @@
 {
   "name": "@altm/deepseek-harness",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Replaceable long-term-memory capability, ALTM provider, and DeepSeek Harness consumer",
   "type": "module",
   "main": "./lib/index.js",

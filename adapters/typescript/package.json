@@ -1,6 +1,6 @@
 {
   "name": "@altm/sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": false,
   "description": "Typed MCP SDK for the ALTM autonomous long-term memory runtime",
   "type": "module",
